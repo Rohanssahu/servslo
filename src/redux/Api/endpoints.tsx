@@ -1,0 +1,35 @@
+// Defining endpoints
+export const endpoint = {
+  login: '/bikedoctor/userAuth/userLogin',
+  otpVerify: '/bikedoctor/userAuth/otpVerify',
+  StateData: '/location/getAllStateData',
+  CityByState: '/location/getCityByState/:stateId',
+  resendOtp: '/bikedoctor/userAuth/resendOtp',
+  addProfile: '/bikedoctor/userAuth/addProfile',
+  servicelist: '/bikedoctor/service/servicelist',
+  bannerlist: '/bikedoctor/banner/bannerlist',
+  nearbydeler: '/bikedoctor/dealer/dealerWithInRange',
+  userbooking: '/bikedoctor/bookings/getuserbookings',
+  mybikes: '/bikedoctor/customers/getMyBikes',
+  addUserBike: '/bikedoctor/customers/addUserBike',
+  getbikecompanies: '/bikedoctor/bike/get-bike-companies',
+  getbikemodels: '/bikedoctor/bike/get-bike-models/:company_id',
+  getbikevariants: '/bikedoctor/bike//get-bike-variants/:model_id',
+  deleteMyBike: '/bikedoctor/customers/deleteMyBike/:bike_id',
+  dealerWithInRange: '/bikedoctor/dealer/dealerWithInRange2',
+  garagedetails: '/bikedoctor/dealer/getShopDetails',
+  createBooking: '/bikedoctor/bookings/createBooking',
+  addpickndrop: '/bikedoctor/pickndrop/addpickndrop',
+  getprofile: '/bikedoctor/customers/customer',
+  updateprofile: '/bikedoctor/customers/editcustomer/:id',
+  profileimage: '/bikedoctor/customers/editimage',
+  bookingdetails: '/bikedoctor/bookings/getBookingDetails/:id',
+  cancelbooking:"/bikedoctor/bookings/updateBookingStatus",
+  gettickets:"/bikedoctor/ticket/my-tickets",
+  createTikit:"/bikedoctor/ticket/create",
+  gettikitdetails:"/bikedoctor/ticket/tickets/:ticket_id",
+  replytikit:"/bikedoctor/ticket/reply/:ticket_id",
+  tikitstatus:"/bikedoctor/ticket/status/:ticket_id"
+
+
+};
