@@ -5,6 +5,7 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { color } from '../../constant';
 import { useNavigation } from '@react-navigation/native';
 import ScreenNameEnum from '../../routes/screenName.enum';
+import LinearGradient from 'react-native-linear-gradient';
 
 const HeaderComponent = ({ 
   language, 
@@ -16,7 +17,10 @@ const HeaderComponent = ({
 
   const navigation = useNavigation()
   return (
-    <View style={styles.headerContainer}>
+    <LinearGradient
+            colors={['#6E39F7', '#8E57FF', '#B78CFF']}
+            start={{ x: 0.1, y: 0 }}
+            end={{ x: 1, y: 1 }} style={styles.headerContainer}>
       
       {/* Left Side: Language Toggle + Location */}
       <View style={styles.leftWrapper}>
@@ -45,7 +49,7 @@ const HeaderComponent = ({
         )}
       </TouchableOpacity>
 
-    </View>
+    </LinearGradient>
   );
 };
 

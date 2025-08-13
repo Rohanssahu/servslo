@@ -82,6 +82,13 @@ const PhoneLogin: React.FC = ({navigation}) => {
         style={styles.button}>
           <Text style={styles.buttonText}>{strings.continue}</Text>
         </TouchableOpacity>
+        <TouchableOpacity 
+        onPress={()=>{
+            navigation.navigate(ScreenNameEnum.TabNavigator)
+        }}
+        style={{marginTop:20}}>
+          <Text style={[styles.buttonText,{color:color.purple,fontWeight:'600'}]}>{'Skip'}</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );

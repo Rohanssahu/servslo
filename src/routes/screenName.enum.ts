@@ -13,7 +13,14 @@ enum ScreenNameEnum {
   JobInvoiceScreen='JobInvoiceScreen',
   ReferToEarnScreen='ReferToEarnScreen',
   HowToUseScreen='HowToUseScreen',
-  HelpSupportScreen='HelpSupportScreen'
+  HelpSupportScreen='HelpSupportScreen',
+
+  LocationFetcher='LocationFetcher',
+  WalletScreen='WalletScreen',
+  ReferralScreen='ReferralScreen',
+  ReviewBookingScreen='ReviewBookingScreen',
+  AddressesScreen='AddressesScreen',
+  LocationPickerScreen='LocationPickerScreen'
 
 
 

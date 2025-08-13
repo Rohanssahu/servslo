@@ -1,6 +1,7 @@
 
 import TabNavigator from "../navigators/TabNavigator";
 import Language from "../screen/Auth/Language";
+import LocationFetcher from "../screen/Auth/LocationFetcher";
 import OTPVerification from "../screen/Auth/OTPVerification";
 import PartnerDocumentsScreen from "../screen/Auth/PartnerDocumentsScreen";
 import PartnerInfoForm from "../screen/Auth/PartnerInfoForm";
@@ -11,12 +12,17 @@ import EarningsScreen from "../screen/BottamTab/EarningsScreen";
 import HomeScreen from "../screen/BottamTab/HomeScreen";
 import MyBookingsScreen from "../screen/BottamTab/MyBookingsScreen";
 import ProfileSettingsScreen from "../screen/BottamTab/ProfileSettingsScreen";
+import AddressesScreen from "../screen/Feature/AddressesScreen";
 import HowToUseScreen from "../screen/Feature/HowToUseScreen";
 import JobInvoiceScreen from "../screen/Feature/invoiceData";
 import JobDetailsScreen from "../screen/Feature/JobDetailsScreen";
+import LocationPickerScreen from "../screen/Feature/LocationPickerScreen";
 import NotificationList from "../screen/Feature/NotificationList";
 import HelpSupportScreen from "../screen/Feature/PartnerHelpSupportScreen";
+import ReferralScreen from "../screen/Feature/ReferralScreen";
 import ReferToEarnScreen from "../screen/Feature/ReferToEarnScreen";
+import ReviewBookingScreen from "../screen/Feature/ReviewBookingScreen";
+import WalletScreen from "../screen/Feature/WalletScreen";
 import ScreenNameEnum from "./screenName.enum";
 
 
@@ -25,6 +31,11 @@ const _routes = {
     {
       name: ScreenNameEnum.SPLASH_SCREEN,
       Component: Splash,
+    },
+   
+    {
+      name: ScreenNameEnum.LocationFetcher,
+      Component: LocationFetcher,
     },
    
     {
@@ -80,6 +91,30 @@ const _routes = {
       Component: HelpSupportScreen,
     },
    
+    {
+      name: ScreenNameEnum.WalletScreen,
+      Component: WalletScreen,
+    },
+   
+    {
+      name: ScreenNameEnum.ReferralScreen,
+      Component: ReferralScreen,
+    },
+    {
+      name: ScreenNameEnum.ReviewBookingScreen,
+      Component: ReviewBookingScreen,
+    },
+    {
+      name: ScreenNameEnum.AddressesScreen,
+      Component: AddressesScreen,
+    },
+    {
+      name: ScreenNameEnum.LocationPickerScreen,
+      Component: LocationPickerScreen,
+    },
+   
+    
+   
 
   ],
 
@@ -100,12 +135,7 @@ const _routes = {
       logo: require('../assets/icons/lists.png'), // your home icon
       lable: 'बुकिंग्स'
     },
-    {
-      name: 'WALLET_SCREEN',
-      Component: EarningsScreen,
-      logo: require('../assets/icons/wallet.png'), // your home icon
-      lable: 'कमाई'
-    },
+
     {
       name: 'PROFILE_SCREEN',
       Component: ProfileSettingsScreen,

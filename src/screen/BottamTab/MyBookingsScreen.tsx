@@ -11,6 +11,7 @@ import languageStrings from '../../language/languageStrings';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import ScreenNameEnum from '../../routes/screenName.enum';
 import HeaderComponent from '../Feature/HeaderComponent';
+import LinearGradient from 'react-native-linear-gradient';
 const bookings = [
   {
     id: '1',
@@ -76,6 +77,11 @@ export default function MyBookingsScreen({navigation}) {
     onPress={()=>{
       navigation.navigate(ScreenNameEnum.JobInvoiceScreen)
     }}
+>
+       <LinearGradient
+                colors={['#6E39F7', '#8E57FF', '#B78CFF']}
+                start={{ x: 0.1, y: 0 }}
+                end={{ x: 1, y: 1 }} 
     style={styles.bookingCard}>
       <TouchableOpacity
         style={styles.speakerIcon}
@@ -111,6 +117,7 @@ export default function MyBookingsScreen({navigation}) {
       <View style={{alignSelf: 'flex-end'}}>
         <MaterialIcons name="arrow-right" size={25} color="white" />
       </View>
+      </LinearGradient>
     </TouchableOpacity>
   );
 
@@ -212,15 +219,15 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   green: {
-    color: 'green',
+    color: '#57de26',
     fontWeight: '700',
   },
   red: {
-    color: 'red',
+    color: '#ff8f8f',
     fontWeight: '700',
   },
   orange: {
-    color: 'orange',
+    color: '#ffe047',
   },
   button: {
     marginTop: 10,

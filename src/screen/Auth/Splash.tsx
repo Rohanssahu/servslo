@@ -23,14 +23,14 @@ export default function Splash() {
   };
 
   const handleProgress = data => {
-    if (data.currentTime >= 5) {
-       navigation.navigate(ScreenNameEnum.TabNavigator);
+    if (data.currentTime >= 3) {
+      navigation.navigate(ScreenNameEnum.TabNavigator);
     }
   };
 
   return (
     <View style={styles.container}>
-      <StatusBar backgroundColor={'#4B0082'} />
+      <StatusBar backgroundColor={'#472784'} />
       <Video
         ref={playerRef}
         source={require('./animated.mov')}
@@ -53,7 +53,7 @@ export default function Splash() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: color.purple,
+    backgroundColor: '#472784',
     justifyContent: 'center',
     alignItems: 'center',
   },
