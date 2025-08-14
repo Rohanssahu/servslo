@@ -15,6 +15,7 @@ import ScreenNameEnum from "../../routes/screenName.enum";
 import LinearGradient from "react-native-linear-gradient";
 import BottomSheet from "@gorhom/bottom-sheet";
 import ServiceBottomSheet, { ServiceBottomSheetRef } from "../Feature/ServiceBottomSheet";
+import QuickServiceCards from "../Feature/QuickServiceCard";
 
 const { width } = Dimensions.get("window");
 const CARD_WIDTH = Math.round((width - 64) / 3); // three small promo cards inside a horizontal area
@@ -34,12 +35,16 @@ export default function HomeScreen({navigation}) {
             end={{ x: 1, y: 1 }} style={styles.topBar}>
     
 
-        <View style={styles.addressBlock}>
+        <TouchableOpacity
+        onPress={()=>{
+          navigation.navigate(ScreenNameEnum.AddressesScreen)
+        }}
+        style={styles.addressBlock}>
           <Text style={styles.addressLabel}>Address</Text>
           <Text style={styles.addressText} numberOfLines={1}>
             404 Applications Numbf Muland Road...
           </Text>
-        </View>
+        </TouchableOpacity>
 
         <View style={styles.topButtons}>
           <TouchableOpacity
@@ -62,6 +67,8 @@ export default function HomeScreen({navigation}) {
         </View>
       </LinearGradient>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+        <QuickServiceCards />
+        <View style={{flex:1,padding:10}}>
               {/* Snabbit card */}
               <View style={styles.card}>
           <View style={styles.cardHeader}>
@@ -90,6 +97,7 @@ export default function HomeScreen({navigation}) {
                 style={styles.bookBtn}><Text style={styles.bookBtnText}>Book</Text></TouchableOpacity>
               </View>
             ))}
+            
           </ScrollView>
         </View>
         {/* Most booked services */}
@@ -267,10 +275,11 @@ export default function HomeScreen({navigation}) {
         <Text style={styles.horizontalLabel}>{srv.label}</Text>
       </TouchableOpacity>
     ))}
+    
   </ScrollView>
 </View>
-
         <View style={{height: 16}} />
+</View>
         </ScrollView>
      
 
@@ -427,8 +436,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: Platform.OS === "android" ? StatusBar.currentHeight+20 || 16 : 16,
     paddingBottom: 18,
-    borderBottomLeftRadius: 18,
-    borderBottomRightRadius: 18,
+   
     flexDirection: "row",
     alignItems: "center",
   },
@@ -470,7 +478,7 @@ const styles = StyleSheet.create({
   walletText: { color: colors.purple, fontWeight: "700" },
 
   container: {
-    padding: 10,
+
     paddingBottom: 96,
   },
 

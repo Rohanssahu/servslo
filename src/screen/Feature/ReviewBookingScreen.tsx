@@ -10,6 +10,7 @@ import {
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { color } from '../../constant';
 import ScreenNameEnum from '../../routes/screenName.enum';
+import LinearGradient from 'react-native-linear-gradient';
 
 const ReviewBookingScreen = ({navigation}) => {
   return (
@@ -51,14 +52,17 @@ const ReviewBookingScreen = ({navigation}) => {
         </View>
 
         {/* Starter Pack Banner */}
-        <View style={styles.banner}>
+   <LinearGradient
+             colors={['#6E39F7', '#8E57FF', '#B78CFF']}
+             start={{ x: 0.1, y: 0 }}
+             end={{ x: 1, y: 1 }} style={styles.banner}>
           <Text style={styles.bannerText}>
             Save more with STARTER PACK{"\n"}3 bookings for just ₹149
           </Text>
           <TouchableOpacity style={styles.bannerBtn}>
             <Text style={styles.bannerBtnText}>Add</Text>
           </TouchableOpacity>
-        </View>
+        </LinearGradient>
 
         {/* Coupons */}
         <TouchableOpacity style={styles.optionRow}>

@@ -121,8 +121,10 @@ const AddressesScreen: React.FC<Props> = ({
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={()=>{
-            navigation.goBack()
-        }} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          navigation.goBack()
+        }} 
+        
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Ionicons name="chevron-back" size={24} color={TEXT_DARK} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Addresses</Text>

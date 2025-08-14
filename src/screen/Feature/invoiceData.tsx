@@ -6,6 +6,7 @@ import { color } from '../../constant';
 import { hp } from '../../component/utils/Constant';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Foundation from 'react-native-vector-icons/Foundation';
+import LinearGradient from 'react-native-linear-gradient';
 const invoiceData = {
   invoice_id: 'INV-2025-00034',
   booking_id: 'BOOK12345',
@@ -32,14 +33,16 @@ const invoiceData = {
 const JobInvoiceScreen = ({navigation}) => {
   return (
     <ScrollView contentContainerStyle={styles.container}>
-
-           <View style={styles.header}>
+     <LinearGradient
+            colors={['#6E39F7', '#8E57FF', '#B78CFF']}
+            start={{ x: 0.1, y: 0 }}
+            end={{ x: 1, y: 1 }}  style={styles.header}>
               <TouchableOpacity onPress={() => navigation.goBack()}>
                 <Icon name="arrow-left" size={24} color="#fff" />
               </TouchableOpacity>
               <Text style={styles.headerText}>Invoice</Text>
               <View style={{ width: 24 }} />
-            </View>
+            </LinearGradient>
       <View style={styles.card}>
       
         <View style={[styles.iconTitle,{  alignSelf:'center'}]}>

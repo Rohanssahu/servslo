@@ -11,6 +11,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import Icon from '../../component/Icon';
 import { icon } from '../../component/Image';
 import Icon2 from 'react-native-vector-icons/MaterialCommunityIcons';
+import LinearGradient from 'react-native-linear-gradient';
 const notifications = [
   {
     id: '1',
@@ -71,7 +72,10 @@ const NotificationList = ({navigation}) => {
   return (
     <View style={styles.container}>
                {/* Top Header Bar */}
-               <View style={styles.header}>
+                <LinearGradient
+                         colors={['#6E39F7', '#8E57FF', '#B78CFF']}
+                         start={{ x: 0.1, y: 0 }}
+                         end={{ x: 1, y: 1 }}   style={styles.header}>
 
 
       <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -87,7 +91,7 @@ const NotificationList = ({navigation}) => {
     }}>
     <Icon source={icon.speaker} size={20} />
   </TouchableOpacity>
-</View>
+</LinearGradient>
 
 <View style={{
   flex:1,padding:16
@@ -168,7 +172,7 @@ const styles = StyleSheet.create({
     backgroundColor: color.purple,
     height: hp(10),
     paddingHorizontal: 16,
-    paddingTop: 40, // For status bar height
+    paddingTop:20, // For status bar height
   },
   
   headerTitle: {
