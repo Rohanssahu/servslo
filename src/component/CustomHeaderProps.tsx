@@ -18,7 +18,7 @@ const CustomHeader: React.FC<CustomHeaderProps> = ({ navigation, title, showSkip
             {/* Back Button */}
             <TouchableOpacity
             
-            onPress={() => navigation.goBack()} style={styles.backButton}>
+            onPress={() => {navigation.goBack()}} style={styles.backButton}>
                 <Icon source={icon.back} size={30} />
             </TouchableOpacity>
 

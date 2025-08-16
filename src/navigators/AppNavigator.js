@@ -13,10 +13,8 @@ import RegistrationRoutes from './RegistrationRoutes';
 
 import { ThemeProvider } from '../component/utils/ThemeProvider';
 import { persistor, store } from '../redux/Store';
-import { locationPermission } from '../component/helperFunction';
 import { LocationProvider } from '../component/LocationContext';
 import { LanguageProvider } from '../language/LanguageContext';
-
 export default function AppNavigator() {
 
 
@@ -30,8 +28,8 @@ export default function AppNavigator() {
              <LanguageProvider>
                 <NavigationContainer>
                   <RegistrationRoutes />
-                  <Toast config={toastConfig} />
                 </NavigationContainer>
+                  <Toast config={toastConfig} />
               </LanguageProvider>
             </LocationProvider>
           </ThemeProvider>

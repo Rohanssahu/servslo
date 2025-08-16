@@ -9,23 +9,25 @@ import {
 } from 'react-native';
 import Geolocation from '@react-native-community/geolocation';
 import LottieView from 'lottie-react-native';
-import locationPinAnimation from './locationpin.json'; // initial loading animation
+import locationPinAnimation from './locationpin.json'; // loading animation
 import LocationAnimation from './LocationAnimation.json'; // location fetched animation
 import {hp, wp} from '../../component/utils/Constant';
 import ScreenNameEnum from '../../routes/screenName.enum';
+import { api_key } from '../../utils/config';
 
 export default function LocationFetcher({navigation}) {
   const [locationFetched, setLocationFetched] = useState(false);
   const [addressMain, setAddressMain] = useState('');
   const [addressDesc, setAddressDesc] = useState('');
-  const [showLocationUI, setShowLocationUI] = useState(false); // after 3 seconds show UI
+  const [showLocationUI, setShowLocationUI] = useState(false);
 
   const lottieLoadingRef = useRef(null);
   const lottieLocationRef = useRef(null);
 
+  const apiKey = api_key // 👈 isko .env file me rakho
+
   async function getAddressFromCoordinates(lat, lng) {
-    const apiKey = 'AIzaSyAIXusFaztMWZwsm0SuBQEgZfuHWewJWYA';
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=22.690602,75.865996&key=AIzaSyAIXusFaztMWZwsm0SuBQEgZfuHWewJWYA`;
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${apiKey}`;
 
     try {
       const response = await fetch(url);
@@ -44,6 +46,8 @@ export default function LocationFetcher({navigation}) {
   }
 
   useEffect(() => {
+    let timeoutId;
+
     async function requestPermissionAndGetLocation() {
       if (Platform.OS === 'android') {
         try {
@@ -71,21 +75,25 @@ export default function LocationFetcher({navigation}) {
       }
 
       Geolocation.getCurrentPosition(
-        position => {
-          // Delay address fetch by 3 seconds to allow animation play
-          setTimeout(async () => {
-            const {main, desc} = await getAddressFromCoordinates(
-              position.coords.latitude,
-              position.coords.longitude,
-            );
-            setAddressMain(main);
-            setAddressDesc(desc);
-            setLocationFetched(true);
+        async position => {
+          const {main, desc} = await getAddressFromCoordinates(
+            position.coords.latitude,
+            position.coords.longitude,
+          );
+          setAddressMain(main);
+          setAddressDesc(desc);
+          setLocationFetched(true);
+          setShowLocationUI(true);
+
+          timeoutId = setTimeout(() => {
+            navigation.replace(ScreenNameEnum.PhoneLogin);
           }, 3000);
         },
         error => {
           Alert.alert('Error', error.message);
-          setShowLocationUI(true); // Show UI even if error
+          timeoutId = setTimeout(() => {
+            navigation.replace(ScreenNameEnum.PhoneLogin);
+          }, 3000);
         },
         {enableHighAccuracy: true, timeout: 15000, maximumAge: 10000},
       );
@@ -93,24 +101,10 @@ export default function LocationFetcher({navigation}) {
 
     requestPermissionAndGetLocation();
 
-    // Show UI after 3 seconds no matter what
-    const timer = setTimeout(() => {
-      setShowLocationUI(true);
-      navigatehome();
-    }, 3000);
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  const navigatehome = async () => {
-  
-      const timer = setTimeout(() => {
-        navigation.navigate(ScreenNameEnum.TabNavigator);
-      }, 3000);
-
-      return () => clearTimeout(timer);
-    
-  };
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [navigation]);
 
   return (
     <View style={styles.container}>
@@ -131,8 +125,11 @@ export default function LocationFetcher({navigation}) {
             ref={lottieLocationRef}
             source={LocationAnimation}
             autoPlay
-            loop
+            loop={false} // ✅ only play once
             style={{width: 80, height: 80}}
+            onAnimationFinish={() => {
+              console.log('Location animation finished');
+            }}
           />
 
           {locationFetched && (
@@ -181,3 +178,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
+
+  

@@ -24,7 +24,7 @@ export default function Splash() {
 
   const handleProgress = data => {
     if (data.currentTime >= 3) {
-      navigation.navigate(ScreenNameEnum.TabNavigator);
+      navigation.navigate(ScreenNameEnum.LocationFetcher);
     }
   };
 
