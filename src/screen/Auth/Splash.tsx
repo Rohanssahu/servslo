@@ -1,51 +1,37 @@
-import {useNavigation} from '@react-navigation/native';
-import React, {useRef, useEffect, useState} from 'react';
-import {View, StyleSheet, StatusBar} from 'react-native';
-import Video from 'react-native-video';
+import React, { useEffect, useRef } from 'react';
+import { View, StyleSheet, StatusBar, Animated } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import ScreenNameEnum from '../../routes/screenName.enum';
 import { color } from '../../constant';
 
 export default function Splash() {
-  const playerRef = useRef(null);
   const navigation = useNavigation();
-  const [paused, setPaused] = useState(true);
-  const [showOverlay, setShowOverlay] = useState(true); // black screen to prevent blink
 
-  const handleVideoLoad = () => {
-    // Seek to 3rd second once video is ready
-    playerRef.current?.seek(0);
-  };
+  const scaleAnim = useRef(new Animated.Value(0)).current; // start very small
 
-  const handleSeek = () => {
-    // Unpause after seek completes
-    setPaused(false);
-    setShowOverlay(false); // remove black screen
-  };
-
-  const handleProgress = data => {
-    if (data.currentTime >= 3) {
-      navigation.navigate(ScreenNameEnum.LocationFetcher);
-    }
-  };
+  useEffect(() => {
+    Animated.timing(scaleAnim, {
+      toValue: 1,       // final normal size
+      duration: 2000,   // 2 seconds animation
+      useNativeDriver: true,
+    }).start(() => {
+      setTimeout(() => {
+        navigation.navigate(ScreenNameEnum.LocationFetcher);
+      }, 500);
+    });
+  }, []);
 
   return (
     <View style={styles.container}>
-      <StatusBar backgroundColor={'#472784'} />
-      <Video
-        ref={playerRef}
-        source={require('./animated.mov')}
-        style={styles.video}
-        resizeMode="cover"
-        paused={paused}
-        muted
-        controls={false}
-        onLoad={handleVideoLoad}
-        onSeek={handleSeek}
-        onProgress={handleProgress}
-      />
-
-      {/* Black overlay to hide blinking */}
-      {showOverlay && <View style={styles.overlay} />}
+      <StatusBar backgroundColor={color.primary || '#623bea'} />
+      <Animated.Text
+        style={[
+          styles.logoText,
+          { transform: [{ scale: scaleAnim }] },
+        ]}
+      >
+        ServsLO
+      </Animated.Text>
     </View>
   );
 }
@@ -53,18 +39,14 @@ export default function Splash() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#472784',
+    backgroundColor: '#623bea',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  video: {
-    width: 400,
-    height: 400,
-    resizeMode: 'contain',
-  },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#000',
-    zIndex: 1,
+  logoText: {
+    fontSize: 52,
+    fontWeight: 'bold',
+    color: '#fff',
+    letterSpacing: 2,
   },
 });
