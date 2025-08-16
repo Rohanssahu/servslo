@@ -16,6 +16,7 @@ import {useLanguage} from '../../language/LanguageContext';
 import languageStrings from '../../language/languageStrings';
 import {hp} from '../../component/utils/Constant';
 import ScreenNameEnum from '../../routes/screenName.enum';
+import LinearGradient from 'react-native-linear-gradient';
 
 const {width} = Dimensions.get('window');
 
@@ -31,7 +32,10 @@ const PhoneLogin: React.FC = ({navigation}) => {
   };
 
   return (
-    <View style={styles.container}>
+    <LinearGradient
+             colors={['#6E39F7', '#8E57FF', '#B78CFF']}
+             start={{ x: 0.1, y: 0 }}
+             end={{ x: 1, y: 1 }}   style={styles.container}>
       {/* Language Switch */}
       <TouchableOpacity
         style={styles.languageToggle}
@@ -90,7 +94,7 @@ const PhoneLogin: React.FC = ({navigation}) => {
           <Text style={[styles.buttonText,{color:color.purple,fontWeight:'600'}]}>{'Skip'}</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </LinearGradient>
   );
 };
 
