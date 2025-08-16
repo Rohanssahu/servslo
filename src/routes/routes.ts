@@ -13,8 +13,9 @@ import HomeScreen from "../screen/BottamTab/HomeScreen";
 import MyBookingsScreen from "../screen/BottamTab/MyBookingsScreen";
 import ProfileSettingsScreen from "../screen/BottamTab/ProfileSettingsScreen";
 import AddressesScreen from "../screen/Feature/AddressesScreen";
+import BookingTrackScreen from "../screen/Feature/BookingTrackScreen";
 import HowToUseScreen from "../screen/Feature/HowToUseScreen";
-import JobInvoiceScreen from "../screen/Feature/invoiceData";
+import JobInvoiceScreen from "../screen/bookingflow/invoiceData";
 import JobDetailsScreen from "../screen/Feature/JobDetailsScreen";
 import LocationPickerScreen from "../screen/Feature/LocationPickerScreen";
 import NotificationList from "../screen/Feature/NotificationList";
@@ -24,6 +25,9 @@ import ReferToEarnScreen from "../screen/Feature/ReferToEarnScreen";
 import ReviewBookingScreen from "../screen/Feature/ReviewBookingScreen";
 import WalletScreen from "../screen/Feature/WalletScreen";
 import ScreenNameEnum from "./screenName.enum";
+import BookingDetailsScreen from "../screen/bookingflow/BookingDetailsScreen";
+import PaymentScreen from "../screen/bookingflow/PaymentScreen";
+import FeedbackScreen from "../screen/Feature/FeedbackScreen";
 
 
 const _routes = {
@@ -112,6 +116,27 @@ const _routes = {
       name: ScreenNameEnum.LocationPickerScreen,
       Component: LocationPickerScreen,
     },
+    {
+      name: ScreenNameEnum.BookingTrackScreen,
+      Component: BookingTrackScreen,
+    },
+    {
+      name: ScreenNameEnum.BookingDetailsScreen,
+      Component: BookingDetailsScreen, // shows what user booked, waiting for assignment
+    },
+    {
+      name: ScreenNameEnum.PaymentScreen,
+      Component: PaymentScreen, // cash/UPI payment choice
+    },
+    {
+      name: ScreenNameEnum.InvoiceScreen,
+      Component: JobInvoiceScreen, // final bill
+    },
+    {
+      name: ScreenNameEnum.Feedback,
+      Component: FeedbackScreen, // final bill
+    },
+    
    
     
    

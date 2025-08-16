@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   SafeAreaView,
   View,
@@ -16,6 +16,8 @@ import LinearGradient from "react-native-linear-gradient";
 import BottomSheet from "@gorhom/bottom-sheet";
 import ServiceBottomSheet, { ServiceBottomSheetRef } from "../Feature/ServiceBottomSheet";
 import QuickServiceCards from "../Feature/QuickServiceCard";
+import SearchBar from "../Feature/SearchBar";
+import { useIsFocused } from "@react-navigation/native";
 
 const { width } = Dimensions.get("window");
 const CARD_WIDTH = Math.round((width - 64) / 3); // three small promo cards inside a horizontal area
@@ -25,7 +27,18 @@ export default function HomeScreen({navigation}) {
   const sheetRef = useRef<ServiceBottomSheetRef>(null);
 
 
+  const [searchText, setSearchText] = useState('');
 
+  const handleSearch = () => {
+    console.log('Searching for:', searchText);
+    // Here you can filter services or call API
+  };
+
+  const isFocus = useIsFocused()
+
+  useEffect(()=>{
+    sheetRef.current?.close()
+  },[isFocus])
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="light-content" backgroundColor={colors.purple} />
@@ -68,6 +81,12 @@ export default function HomeScreen({navigation}) {
       </LinearGradient>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         <QuickServiceCards />
+      <SearchBar
+        searchText={searchText}
+        setSearchText={setSearchText}
+        onSearch={handleSearch}
+      />
+        
         <View style={{flex:1,padding:10}}>
               {/* Snabbit card */}
               <View style={styles.card}>
@@ -157,24 +176,7 @@ export default function HomeScreen({navigation}) {
   </ScrollView>
 </View>
 
- {/* Prebook slot block */}
-        {/* <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Prebook for convenience</Text>
-          <Text style={styles.sectionSub}>Tap to select your slot</Text>
 
-          <View style={styles.slotRow}>
-            {[
-              { label: "Single", img: require("./assets/clock.png") },
-              { label: "Multiple", img: require("./assets/calendar.png") },
-              { label: "Recurring", img: require("./assets/calendar2.png"), muted: true },
-            ].map((s, idx) => (
-              <TouchableOpacity key={idx} style={[styles.slotCard, s.muted && styles.slotMuted]}>
-                <Image source={s.img} style={styles.slotImg} />
-                <Text style={[styles.slotLabel, s.muted && styles.slotLabelMuted]}>{s.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View> */}
              {/* Services */}
              <View style={styles.card}>
           <Text style={styles.sectionTitle}>Our Services</Text>

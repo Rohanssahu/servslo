@@ -14,13 +14,19 @@ enum ScreenNameEnum {
   ReferToEarnScreen='ReferToEarnScreen',
   HowToUseScreen='HowToUseScreen',
   HelpSupportScreen='HelpSupportScreen',
+  BookingTrackScreen='BookingTrackScreen',
 
   LocationFetcher='LocationFetcher',
   WalletScreen='WalletScreen',
   ReferralScreen='ReferralScreen',
   ReviewBookingScreen='ReviewBookingScreen',
   AddressesScreen='AddressesScreen',
-  LocationPickerScreen='LocationPickerScreen'
+  LocationPickerScreen='LocationPickerScreen',
+  PaymentScreen='PaymentScreen',
+  BookingDetailsScreen='BookingDetailsScreen',
+  InvoiceScreen='InvoiceScreen',
+  Feedback='Feedback'
+
 
 
 

@@ -9,56 +9,33 @@ import { getCurrentLocation, locationPermission } from '../component/helperFunct
 import { useLocation } from '../component/LocationContext';
 const Stack = createNativeStackNavigator();
 
-const RegistrationRoutes: FunctionComponent = () => {
-
+const RegistrationRoutes: FunctionComponent = React.memo(() => {
   const { locationName, setLocationName } = useLocation();
-  function getFormattedAddress(response) {
-    if (response.status === "OK" && response.results.length > 0) {
-      // Get the formatted address from the results
-      return response.results[0].formatted_address;
-    } else {
-      return "Address not found";
-    }
-  }
+
   useEffect(() => {
+    let isMounted = true;
     const fetchLocationData = async () => {
       try {
         const locPermission = await locationPermission();
-        if (locPermission !== 'granted') {
-          console.log('Location permission denied');
-          return;
-        }
+        if (locPermission !== 'granted') return;
 
-        // Get current location
         const { latitude, longitude } = await getCurrentLocation();
-
-
-
-        // Fetch geocode
-        const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=AIzaSyADzwSBu_YTmqWZj7ys5kp5UcFDG9FQPVY`;
-
-
+        const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=YOUR_KEY`;
         const res = await fetch(url);
         const json = await res.json();
 
-        if (json.status === 'OK' && json.results.length) {
-
-
-         
-          const city = getFormattedAddress(json);
-
-        setLocationName(city);
-          // _update_location(latitude, longitude);
+        if (isMounted && json.status === 'OK' && json.results.length) {
+          const city = json.results[0].formatted_address;
+          if (!locationName) setLocationName(city);
         }
-
-
       } catch (error) {
         console.log("Error fetching location:", error);
       }
     };
 
     fetchLocationData();
-  }, []); // Empty dependency array ensures this runs only once on mount
+    return () => { isMounted = false; };
+  }, []);
 
   return (
     <Stack.Navigator
@@ -67,22 +44,17 @@ const RegistrationRoutes: FunctionComponent = () => {
         headerShown: false,
         gestureEnabled: true,
         gestureDirection: 'horizontal',
-        
       }}>
       {_routes.REGISTRATION_ROUTE.map(screen => (
         <Stack.Screen
           key={screen.name}
           name={screen.name}
           component={screen.Component}
-          options={
-            screen.name === ScreenNameEnum.LANGUAGE_SELECT
-              ? { animation: 'fade' } // 👈 Apply fade only on LANGUAGE_SELECT
-              : undefined
-          }
+          options={screen.name === ScreenNameEnum.LANGUAGE_SELECT ? { animation: 'fade' } : undefined}
         />
       ))}
     </Stack.Navigator>
   );
-};
+});
 
 export default RegistrationRoutes;

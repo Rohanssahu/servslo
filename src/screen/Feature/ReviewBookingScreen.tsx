@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -11,8 +11,22 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { color } from '../../constant';
 import ScreenNameEnum from '../../routes/screenName.enum';
 import LinearGradient from 'react-native-linear-gradient';
+import BookingConfirmationModal from './BookingConfirmationModal';
 
 const ReviewBookingScreen = ({navigation}) => {
+
+  const [confirmVisible, setConfirmVisible] = useState(false);
+
+const handleBookNow = () => {
+  // user pressed Book
+  setConfirmVisible(true);
+};
+
+const handleConfirmDone = () => {
+  setConfirmVisible(false);
+  navigation.navigate(ScreenNameEnum.TabNavigator); // or ScreenNameEnum.TabNavigator
+};
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -107,9 +121,14 @@ const ReviewBookingScreen = ({navigation}) => {
       </ScrollView>
 
       {/* Fixed Bottom Button */}
-      <TouchableOpacity style={styles.payButton}>
+      <TouchableOpacity style={styles.payButton} onPress={handleBookNow}>
         <Text style={styles.payButtonText}>Proceed to pay ₹160</Text>
       </TouchableOpacity>
+      <BookingConfirmationModal
+      visible={confirmVisible}
+      onFinished={handleConfirmDone}
+      durationMs={5000} // 3 seconds
+    />
     </View>
   );
 };

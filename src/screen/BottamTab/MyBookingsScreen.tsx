@@ -1,17 +1,17 @@
 import React from 'react';
 import {View, Text, FlatList, StyleSheet, TouchableOpacity} from 'react-native';
-import {color} from '../../constant';
-import MaterialIcons from 'react-native-vector-icons/FontAwesome6';
-import Icon from '../../component/Icon';
-import {icon} from '../../component/Image';
-import Tts from 'react-native-tts';
-import {hp} from '../../component/utils/Constant';
-import {useLanguage} from '../../language/LanguageContext';
-import languageStrings from '../../language/languageStrings';
+import LinearGradient from 'react-native-linear-gradient';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import {color} from '../../constant';
 import ScreenNameEnum from '../../routes/screenName.enum';
 import HeaderComponent from '../Feature/HeaderComponent';
-import LinearGradient from 'react-native-linear-gradient';
+import {useLanguage} from '../../language/LanguageContext';
+import languageStrings from '../../language/languageStrings';
+import Tts from 'react-native-tts';
+import {icon} from '../../component/Image';
+import Icon from '../../component/Icon';
+
 const bookings = [
   {
     id: '1',
@@ -42,12 +42,10 @@ const bookings = [
 export default function MyBookingsScreen({navigation}) {
   const {language, setLanguage} = useLanguage();
   const strings = languageStrings[language];
+
   const speakInstruction = booking => {
     const {service, address, datetime, earning, status} = booking;
-
     Tts.setDefaultLanguage('hi-IN');
-
-    // स्थिति का अनुवाद (optional: आप strings से भी ले सकते हैं)
     let statusHindi = '';
     switch (status) {
       case 'पूर्ण':
@@ -59,83 +57,86 @@ export default function MyBookingsScreen({navigation}) {
       case 'चालू':
         statusHindi = 'बुकिंग चालू है';
         break;
-      default:
-        statusHindi = 'स्थिति उपलब्ध नहीं है';
     }
-
-    const speech = `${service} सेवा की बुकिंग की है। 
-    स्थान: ${address}।
-    समय: ${datetime}।
-    कमाई: ₹${earning} रुपये।
-    स्थिति: ${statusHindi}।`;
-
+    const speech = `${service} सेवा की बुकिंग की है। स्थान: ${address}। समय: ${datetime}। कमाई: ₹${earning} रुपये। स्थिति: ${statusHindi}।`;
     Tts.speak(speech);
   };
 
-  const renderBooking = ({item}: {item: (typeof bookings)[0]}) => (
-    <TouchableOpacity 
-    onPress={()=>{
-      navigation.navigate(ScreenNameEnum.JobInvoiceScreen)
-    }}
->
-       <LinearGradient
-                colors={['#6E39F7', '#8E57FF', '#B78CFF']}
-                start={{ x: 0.1, y: 0 }}
-                end={{ x: 1, y: 1 }} 
-    style={styles.bookingCard}>
-      <TouchableOpacity
-        style={styles.speakerIcon}
-        onPress={() => {
-          speakInstruction(item);
-        }}>
-        <Icon
-          source={icon.speaker}
-          size={20}
-          style={{tintColor: color.purple}}
-        />
-      </TouchableOpacity>
-      <View>
-        <Text style={styles.bookingTitle}>{item.service} बुकिंग</Text>
-        <Text style={styles.bookingDetails}>{item.address}</Text>
-        <View style={styles.earningCard}>
-          <Text style={styles.earningLabel}>कमाई</Text>
-          <Text style={styles.earningAmount}>₹ {item.earning}</Text>
-        </View>
-        <Text
-          style={[
-            styles.bookingTime,
-            item.status === 'पूर्ण'
-              ? styles.green
-              : item.status === 'रद्द'
-              ? styles.red
-              : styles.orange,
-          ]}>
-          {item.status} | {item.datetime}
-        </Text>
+  const renderBooking = ({item}) => (
+    <TouchableOpacity
+      activeOpacity={0.9}
+      onPress={() => navigation.navigate(ScreenNameEnum.BookingDetailsScreen)}>
+      <View style={styles.card}>
+        {/* Top Row */}
+     
+        
+
+        <View style={styles.idContainer}>
+        <Text style={styles.idLabel}>बुकिंग-ID</Text>
+        <Text style={styles.idValue}>BK-{item.id}</Text>
       </View>
 
-      <View style={{alignSelf: 'flex-end'}}>
-        <MaterialIcons name="arrow-right" size={25} color="white" />
+        <View style={styles.rowBetween}>
+          <View style={styles.row}>
+            <Ionicons name="construct-outline" size={28} color={color.purple} />
+            <Text style={styles.serviceTitle}>{item.service} बुकिंग</Text>
+          </View>
+
+          <TouchableOpacity
+            style={styles.speakerBtn}
+            onPress={() => speakInstruction(item)}>
+            <Icon
+              source={icon.speaker}
+              size={18}
+              style={{tintColor: color.purple}}
+            />
+          </TouchableOpacity>
+        </View>
+
+
+        {/* Address */}
+        <Text style={styles.address}>{item.address}</Text>
+
+        {/* Time & Status */}
+        <View style={styles.rowBetween}>
+          <Text style={styles.datetime}>{item.datetime}</Text>
+          <View
+            style={[
+              styles.statusBadge,
+              item.status === 'पूर्ण'
+                ? styles.greenBadge
+                : item.status === 'रद्द'
+                ? styles.redBadge
+                : styles.orangeBadge,
+            ]}>
+            <Text style={styles.statusText}>{item.status}</Text>
+          </View>
+        </View>
+
+        {/* Earning & Arrow */}
+        <View style={styles.rowBetween}>
+          <View style={styles.earningBox}>
+            <Text style={styles.earningLabel}>कमाई</Text>
+            <Text style={styles.earningValue}>₹ {item.earning}</Text>
+          </View>
+          <MaterialIcons name="keyboard-arrow-right" size={28} color="#777" />
+        </View>
       </View>
-      </LinearGradient>
+      <View style={styles.line} />
     </TouchableOpacity>
   );
 
   return (
     <View style={styles.container}>
-             <HeaderComponent 
-  language={language}
-  setLanguage={setLanguage}
-  location="Indore, MP"
-  notificationCount={5}
-  onNotificationPress={() => console.log('Notification clicked')}
-/>
+      <HeaderComponent
+        language={language}
+        setLanguage={setLanguage}
+        location="Indore, MP"
+        notificationCount={5}
+        onNotificationPress={() => console.log('Notification clicked')}
+      />
 
-      <View
-        style={{
-          padding: 16,
-          flex: 1,
-        }}>
+      <View style={{padding: 16, flex: 1}}>
         <Text style={styles.header}>मेरी बुकिंग्स</Text>
         <FlatList
           data={bookings}
@@ -150,123 +151,79 @@ export default function MyBookingsScreen({navigation}) {
 }
 
 const styles = StyleSheet.create({
-  languageToggle: {
-    position: 'absolute',
-    top: 50,
-    left: 30,
-    zIndex: 10,
-  },
-  bellIcon: {
-    position: 'absolute',
-    top: 40,
-    right: 15,
-    zIndex: 10,
-    backgroundColor: '#fff',
-    padding: 10,
-    borderRadius: 10,
-  },
-  bookingCard: {
-    backgroundColor: color.purple,
-    padding: 16,
-    borderRadius: 12,
-    marginTop: 20,
-    marginBottom: 16,
-  },
-  bookingTitle: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  bookingDetails: {
-    color: '#e3e3e3',
-    fontSize: 18,
-  },
-  bookingTime: {
-    color: '#ffffff',
-    fontSize: 18,
-    marginTop: 10,
-  },
-  container: {
-    flex: 1,
-
-    backgroundColor: '#F5F5F5',
-  },
+  container: {flex: 1, backgroundColor: '#fff'},
   header: {
-    fontSize: 25,
-    fontWeight: 'bold',
+    fontSize: 24,
+    fontWeight: '700',
     marginBottom: 12,
     color: color.purple,
   },
   card: {
-    backgroundColor: '#FFF',
-    padding: 14,
-    borderRadius: 10,
-    marginBottom: 12,
-    elevation: 2,
+  
+padding:10,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+
+    marginHorizontal:5
   },
-  service: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 6,
-  },
-  text: {
-    fontSize: 14,
-    marginBottom: 4,
-  },
-  status: {
-    marginTop: 6,
-    fontWeight: '700',
-  },
-  green: {
-    color: '#57de26',
-    fontWeight: '700',
-  },
-  red: {
-    color: '#ff8f8f',
-    fontWeight: '700',
-  },
-  orange: {
-    color: '#ffe047',
-  },
-  button: {
-    marginTop: 10,
-    backgroundColor: '#1E90FF',
+  row: {flexDirection: 'row', alignItems: 'center'},
+  rowBetween: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'},
+  serviceTitle: {fontSize: 18, fontWeight: '700', marginLeft: 8, color: '#333'},
+  address: {color: '#666', marginTop: 6, fontSize: 15},
+  datetime: {color: '#444', fontSize: 14, marginTop: 8},
+  earningBox: {
+    marginTop: 12,
+    backgroundColor: '#F3E5F5',
     paddingVertical: 6,
-    borderRadius: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    flexDirection: 'row',
     alignItems: 'center',
   },
-  buttonText: {
-    color: '#FFF',
-    fontWeight: '600',
-  },
-  earningCard: {
-    flexDirection: 'row',
-    backgroundColor: '#F3E5F5',
+  earningLabel: {color: '#6A1B9A', fontSize: 15, fontWeight: '600', marginRight: 6},
+  earningValue: {color: '#4A148C', fontSize: 15, fontWeight: '700'},
+  statusBadge: {
     paddingVertical: 4,
     paddingHorizontal: 10,
-    borderRadius: 6,
-    alignSelf: 'flex-start',
+    borderRadius: 20,
     marginTop: 8,
   },
-  earningLabel: {
-    color: '#6A1B9A',
+  statusText: {color: '#fff', fontWeight: '700', fontSize: 12},
+  greenBadge: {backgroundColor: '#4CAF50'},
+  redBadge: {backgroundColor: '#F44336'},
+  orangeBadge: {backgroundColor: '#FF9800'},
+  speakerBtn: {
+    backgroundColor: '#f1f1f1',
+    padding: 6,
+    borderRadius: 20,
+  },
+  line: {
+    height: 1,
+    backgroundColor: '#ccc',
+    marginVertical: 10
+  },
+  idContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: '#f2e6ff',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius:8,
+    marginBottom: 8,
+  },
+  idLabel: {
+    fontSize: 12,
     fontWeight: '600',
-    fontSize: 18,
-    marginRight: 6,
+    color: color.purple,
+    marginRight: 5,
   },
-  earningAmount: {
-    color: '#4A148C',
+  idValue: {
+    fontSize: 14,
     fontWeight: 'bold',
-    fontSize: 18,
+    color: color.darkPurple,
   },
-  speakerIcon: {
-    position: 'absolute',
-    top: 15,
-    right: 15,
-    zIndex: 10,
-    backgroundColor: '#fff',
-    padding: 10,
-    borderRadius: 30,
-  },
+  
 });

@@ -35,7 +35,7 @@ interface Props {
 const ServiceBottomSheet = forwardRef<ServiceBottomSheetRef, Props>(
   ({ onClose }, ref) => {
     const sheetRef = useRef<BottomSheet>(null);
-    const snapPoints = useMemo(() => ['60%', '90%'], []);
+
 
 const navigation = useNavigation()
     // Expose methods to parent
@@ -105,7 +105,7 @@ const navigation = useNavigation()
       
       <BottomSheet
       ref={sheetRef}
-      index={0} // initial snap point
+      index={-1} // initial snap point
       snapPoints={['70%']} // fixed height
       enablePanDownToClose
       enableOverDrag={false} // no over-drag
