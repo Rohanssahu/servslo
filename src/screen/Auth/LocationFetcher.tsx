@@ -13,7 +13,7 @@ import locationPinAnimation from './locationpin.json'; // loading animation
 import LocationAnimation from './LocationAnimation.json'; // location fetched animation
 import {hp, wp} from '../../component/utils/Constant';
 import ScreenNameEnum from '../../routes/screenName.enum';
-import { api_key } from '../../utils/config';
+import { api_key } from '../../../config';
 
 export default function LocationFetcher({navigation}) {
   const [locationFetched, setLocationFetched] = useState(false);
