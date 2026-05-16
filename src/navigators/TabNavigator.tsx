@@ -2,6 +2,7 @@ import { View, Text, Image, Keyboard, Platform, TouchableOpacity } from 'react-n
 import React, { useEffect, useState } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import _routes from '../routes/routes';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const Tab = createBottomTabNavigator();
 
@@ -25,6 +26,12 @@ export default function TabNavigator() {
   }, []);
 
   return (
+    <SafeAreaView
+    
+    
+    
+    style={{flex:1}}
+    >
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
@@ -100,5 +107,6 @@ export default function TabNavigator() {
         />
       ))}
     </Tab.Navigator>
+    </SafeAreaView>
   );
 }
