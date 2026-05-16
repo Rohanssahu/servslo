@@ -56,6 +56,17 @@ const ADDRESSES = [
   {id: '2', type: 'office', label: '💼 Office', address: 'B-204, IT Park, Hingna'},
 ];
 
+type PreSelectedProvider = {
+  name: string;
+  initial: string;
+  rating: string;
+  jobs: number;
+  eta: number;
+  dist: number;
+  phone: string;
+  status: string;
+};
+
 type Props = {
   navigation: any;
   route: {
@@ -68,12 +79,13 @@ type Props = {
         rating: string;
         basePrice: number;
       };
+      preSelectedProvider?: PreSelectedProvider;
     };
   };
 };
 
 export default function ServiceBookingScreen({navigation, route}: Props) {
-  const {service} = route.params;
+  const {service, preSelectedProvider} = route.params;
   const total = service.basePrice + ARRIVAL_CHARGE;
 
   const scriptHi =
@@ -108,6 +120,7 @@ export default function ServiceBookingScreen({navigation, route}: Props) {
       scheduledTime: `${DAYS[selectedDay].sublabel}, ${selectedTime}`,
       duration: selectedDuration,
       bookingId: `BK${Date.now()}`,
+      preSelectedProvider,
     });
   };
 
@@ -143,6 +156,27 @@ export default function ServiceBookingScreen({navigation, route}: Props) {
             </View>
           </View>
         </View>
+
+        {/* Pre-selected expert banner */}
+        {preSelectedProvider && (
+          <View style={s.expertBanner}>
+            <View style={s.expertBannerLeft}>
+              <View style={s.expertAvatar}>
+                <Text style={s.expertAvatarTxt}>{preSelectedProvider.initial}</Text>
+              </View>
+              <View style={s.expertInfo}>
+                <Text style={s.expertName}>{preSelectedProvider.name}</Text>
+                <Text style={s.expertMeta}>
+                  ⭐ {preSelectedProvider.rating}  ·  {preSelectedProvider.jobs} jobs
+                </Text>
+              </View>
+            </View>
+            <View style={s.expertEtaBox}>
+              <Text style={s.expertEtaVal}>{preSelectedProvider.eta} min</Text>
+              <Text style={s.expertEtaLbl}>ETA</Text>
+            </View>
+          </View>
+        )}
 
         {/* Trust badges */}
         <View style={s.trustRow}>
@@ -512,6 +546,35 @@ const s = StyleSheet.create({
     alignItems: 'flex-start',
   },
   policyText: {flex: 1, fontSize: 12, color: C.sub, lineHeight: 17},
+
+  // Pre-selected expert banner
+  expertBanner: {
+    backgroundColor: C.purpleL,
+    borderRadius: 14,
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+    borderWidth: 1.5,
+    borderColor: C.purple + '44',
+  },
+  expertBannerLeft: {flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1},
+  expertAvatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: C.purple,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  expertAvatarTxt: {fontSize: 18, fontWeight: '900', color: '#fff'},
+  expertInfo: {flex: 1},
+  expertName: {fontSize: 14, fontWeight: '800', color: C.purple},
+  expertMeta: {fontSize: 12, color: C.sub, marginTop: 1},
+  expertEtaBox: {alignItems: 'center', paddingLeft: 12},
+  expertEtaVal: {fontSize: 18, fontWeight: '900', color: C.purple},
+  expertEtaLbl: {fontSize: 10, color: C.sub, fontWeight: '600'},
 
   bottomBar: {
     position: 'absolute',

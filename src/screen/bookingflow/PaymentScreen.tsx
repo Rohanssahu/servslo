@@ -1,4 +1,4 @@
-import React, {useState, useRef} from 'react';
+import React, {useState, useRef, useEffect} from 'react';
 import {
   View,
   Text,
@@ -39,6 +39,17 @@ const UPI_APPS = [
   {id: 'other', label: 'Other UPI', icon: 'qr-code'},
 ];
 
+type PreSelectedProvider = {
+  name: string;
+  initial: string;
+  rating: string;
+  jobs: number;
+  eta: number;
+  dist: number;
+  phone?: string;
+  status?: string;
+};
+
 type Props = {
   navigation: any;
   route: {
@@ -50,6 +61,7 @@ type Props = {
       scheduledTime?: string;
       bookingId: string;
       isArrivalOnly?: boolean;
+      preSelectedProvider?: PreSelectedProvider;
     };
   };
 };
@@ -63,6 +75,7 @@ export default function PaymentScreen({route, navigation}: Props) {
     scheduledTime,
     bookingId,
     isArrivalOnly = false,
+    preSelectedProvider,
   } = route.params;
 
   const scriptHi = isArrivalOnly
@@ -81,9 +94,53 @@ export default function PaymentScreen({route, navigation}: Props) {
   const [mode, setMode] = useState<'CASH' | 'UPI' | null>(null);
   const [upiApp, setUpiApp] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [payPhase, setPayPhase] = useState<0 | 1 | 2>(0);
   const scale = useRef(new Animated.Value(0)).current;
+  const pulse1 = useRef(new Animated.Value(0)).current;
+  const pulse2 = useRef(new Animated.Value(0)).current;
+  const pulse3 = useRef(new Animated.Value(0)).current;
+  const pc1 = useRef(new Animated.Value(0)).current;
+  const pc2 = useRef(new Animated.Value(0)).current;
+  const pc3 = useRef(new Animated.Value(0)).current;
+  const provSlide = useRef(new Animated.Value(55)).current;
+  const provFade = useRef(new Animated.Value(0)).current;
 
   const amountToPay = payPlan === 'ARRIVAL_ONLY' ? arrivalCharge : amount;
+
+  useEffect(() => {
+    if (payPhase !== 1) return;
+    const mkPulse = (a: Animated.Value, delay: number) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(delay),
+          Animated.timing(a, {toValue: 1, duration: 1400, useNativeDriver: true}),
+          Animated.timing(a, {toValue: 0, duration: 0, useNativeDriver: true}),
+        ]),
+      );
+    const a1 = mkPulse(pulse1, 0);
+    const a2 = mkPulse(pulse2, 470);
+    const a3 = mkPulse(pulse3, 940);
+    a1.start(); a2.start(); a3.start();
+    const t = setTimeout(() => {
+      Animated.stagger(550, [
+        Animated.timing(pc1, {toValue: 1, duration: 400, useNativeDriver: true}),
+        Animated.timing(pc2, {toValue: 1, duration: 400, useNativeDriver: true}),
+        Animated.timing(pc3, {toValue: 1, duration: 400, useNativeDriver: true}),
+      ]).start();
+    }, 500);
+    return () => {
+      clearTimeout(t);
+      pulse1.setValue(0); pulse2.setValue(0); pulse3.setValue(0);
+    };
+  }, [payPhase]);
+
+  useEffect(() => {
+    if (payPhase !== 2) return;
+    Animated.parallel([
+      Animated.timing(provSlide, {toValue: 0, duration: 500, useNativeDriver: true}),
+      Animated.timing(provFade, {toValue: 1, duration: 500, useNativeDriver: true}),
+    ]).start();
+  }, [payPhase]);
 
   const payNow = () => {
     if (!mode) {
@@ -94,11 +151,29 @@ export default function PaymentScreen({route, navigation}: Props) {
       Alert.alert('UPI App चुनें', 'कृपया UPI app चुनें');
       return;
     }
+    setPayPhase(0);
+    [pulse1, pulse2, pulse3, pc1, pc2, pc3, provFade].forEach(a => a.setValue(0));
+    provSlide.setValue(55);
     setShowModal(true);
     Animated.spring(scale, {toValue: 1, useNativeDriver: true}).start();
-    setTimeout(() => {
-      navigation.replace(ScreenNameEnum.BookingTrackScreen, {bookingId});
-    }, 2200);
+    if (isArrivalOnly) {
+      setTimeout(() => navigation.goBack(), 2800);
+      return;
+    }
+    if (preSelectedProvider) {
+      // Provider already chosen — skip searching, go straight to assigned
+      setTimeout(() => setPayPhase(2), 1400);
+      setTimeout(() => {
+        navigation.replace(ScreenNameEnum.BookingTrackScreen, {bookingId});
+      }, 4800);
+    } else {
+      // Normal flow — search for a provider
+      setTimeout(() => setPayPhase(1), 1200);
+      setTimeout(() => setPayPhase(2), 5000);
+      setTimeout(() => {
+        navigation.replace(ScreenNameEnum.BookingTrackScreen, {bookingId});
+      }, 7500);
+    }
   };
 
   return (
@@ -319,24 +394,136 @@ export default function PaymentScreen({route, navigation}: Props) {
         </TouchableOpacity>
       </View>
 
-      {/* Success Modal */}
-      <Modal transparent visible={showModal} animationType="fade">
+      {/* Success Modal — multi-phase */}
+      <Modal transparent visible={showModal} animationType="fade" statusBarTranslucent>
         <View style={s.overlay}>
-          <Animated.View style={[s.modalBox, {transform: [{scale}]}]}>
-            <LinearGradient colors={C.greenGrad} style={s.successIcon}>
-              <Icon name="checkmark-done" size={46} color="#fff" />
-            </LinearGradient>
-            <Text style={s.successTitle}>
-              {isArrivalOnly ? 'Arrival Charge Paid!' : 'Booking Confirmed! 🎉'}
-            </Text>
-            <Text style={s.successSub}>
-              {isArrivalOnly
-                ? 'Booking cancel हो गई। धन्यवाद!'
-                : payPlan === 'ARRIVAL_ONLY'
-                  ? 'Partner आपकी तरफ आ रहा है...'
-                  : 'Partner ढूंढा जा रहा है...'}
-            </Text>
-          </Animated.View>
+
+          {/* Phase 0: Booking Confirmed */}
+          {payPhase === 0 && (
+            <Animated.View style={[s.modalBox, {transform: [{scale}]}]}>
+              <LinearGradient colors={C.greenGrad} style={s.successIcon}>
+                <Icon name="checkmark-done" size={46} color="#fff" />
+              </LinearGradient>
+              <Text style={s.successTitle}>
+                {isArrivalOnly ? 'Arrival Charge Paid!' : 'Booking Confirmed! 🎉'}
+              </Text>
+              <Text style={s.successSub}>
+                {isArrivalOnly
+                  ? 'Booking cancel हो गई। धन्यवाद!'
+                  : preSelectedProvider
+                  ? `${preSelectedProvider.name.split(' ')[0]} को assign किया जा रहा है...`
+                  : 'Professionals को notify किया जा रहा है...'}
+              </Text>
+              {!isArrivalOnly && (
+                <View style={s.phase0Badges}>
+                  {['✅ Verified', '⭐ 4.8+', '🏅 Insured'].map((b, i) => (
+                    <View key={i} style={s.phase0Badge}>
+                      <Text style={s.phase0BadgeTxt}>{b}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </Animated.View>
+          )}
+
+          {/* Phase 1: Searching */}
+          {payPhase === 1 && (
+            <View style={s.searchingCard}>
+              <Text style={s.searchTitle}>Nearby Experts ढूंढे जा रहे हैं...</Text>
+
+              {/* Radar animation */}
+              <View style={s.radarWrap}>
+                {[pulse1, pulse2, pulse3].map((p, i) => (
+                  <Animated.View key={i} style={[s.radarRing, {
+                    opacity: p.interpolate({inputRange: [0, 0.6, 1], outputRange: [0.55, 0.18, 0]}),
+                    transform: [{scale: p.interpolate({inputRange: [0, 1], outputRange: [0.12, 1.85]})}],
+                  }]} />
+                ))}
+                <LinearGradient colors={C.grad} style={s.radarCore}>
+                  <Text style={{fontSize: 20}}>📍</Text>
+                </LinearGradient>
+              </View>
+
+              {/* Provider previews */}
+              <View style={s.pcList}>
+                {[
+                  {a: pc1, init: 'R', name: 'Ravi Kumar', dist: '1.2 km'},
+                  {a: pc2, init: 'A', name: 'Amit Sharma', dist: '2.0 km'},
+                  {a: pc3, init: 'S', name: 'Suresh Patel', dist: '2.8 km'},
+                ].map((pv, i) => (
+                  <Animated.View key={i} style={[s.pcRow, {
+                    opacity: pv.a,
+                    transform: [{translateX: pv.a.interpolate({inputRange: [0, 1], outputRange: [-18, 0]})}],
+                  }]}>
+                    <LinearGradient colors={C.grad} style={s.pcAvatar}>
+                      <Text style={s.pcInitial}>{pv.init}</Text>
+                    </LinearGradient>
+                    <View style={{flex: 1}}>
+                      <Text style={s.pcName}>{pv.name}</Text>
+                      <Text style={s.pcDist}>📍 {pv.dist}</Text>
+                    </View>
+                    <Animated.View style={[s.searchDot, {
+                      transform: [{scale: pulse1.interpolate({inputRange: [0, 0.5, 1], outputRange: [1, 1.5, 1]})}],
+                    }]} />
+                  </Animated.View>
+                ))}
+              </View>
+
+              <View style={s.trustRow}>
+                {['⭐ 4.8 avg', '✅ Verified', '🕐 <10 min'].map((b, i) => (
+                  <View key={i} style={s.trustBadge}>
+                    <Text style={s.trustBadgeTxt}>{b}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Phase 2: Provider Assigned */}
+          {payPhase === 2 && (() => {
+            const prov = preSelectedProvider ?? {
+              name: 'Ravi Kumar',
+              initial: 'R',
+              rating: '4.8',
+              jobs: 312,
+              eta: 8,
+              dist: 1.2,
+            };
+            return (
+              <Animated.View style={[s.provFoundCard, {opacity: provFade, transform: [{translateY: provSlide}]}]}>
+                {preSelectedProvider ? (
+                  <View style={s.assignedBanner}>
+                    <Icon name="checkmark-circle" size={20} color={C.purple} />
+                    <Text style={s.assignedBannerTxt}>
+                      {prov.name.split(' ')[0]} assigned to you!
+                    </Text>
+                  </View>
+                ) : (
+                  <View style={s.foundBanner}>
+                    <Icon name="checkmark-circle" size={20} color={C.green} />
+                    <Text style={s.foundBannerTxt}>Expert मिल गया!</Text>
+                  </View>
+                )}
+                <LinearGradient colors={C.grad} style={s.bigAvatar}>
+                  <Text style={s.bigAvatarTxt}>{prov.initial}</Text>
+                </LinearGradient>
+                <Text style={s.provNameBig}>{prov.name}</Text>
+                <Text style={s.provMeta}>⭐ {prov.rating}  ·  {prov.jobs} jobs done</Text>
+                <View style={s.etaDistRow}>
+                  <View style={s.etaPill}>
+                    <Icon name="time-outline" size={13} color={C.purple} />
+                    <Text style={s.etaTxt}>{prov.eta} min ETA</Text>
+                  </View>
+                  <View style={s.distPill}>
+                    <Icon name="location-outline" size={13} color={C.orange} />
+                    <Text style={s.distTxt}>{prov.dist} km</Text>
+                  </View>
+                </View>
+                <Text style={s.onWayTxt}>आपकी तरफ आ रहे हैं 🚗</Text>
+              </Animated.View>
+            );
+          })()}
+
         </View>
       </Modal>
     </SafeAreaView>
@@ -539,7 +726,7 @@ const s = StyleSheet.create({
   },
   payBtnText: {color: '#fff', fontWeight: '900', fontSize: 16},
 
-  overlay: {flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center'},
+  overlay: {flex: 1, backgroundColor: 'rgba(0,0,0,0.68)', justifyContent: 'center', alignItems: 'center'},
   modalBox: {
     width: 300,
     backgroundColor: C.card,
@@ -557,5 +744,89 @@ const s = StyleSheet.create({
     marginBottom: 16,
   },
   successTitle: {fontSize: 20, fontWeight: '900', color: C.green, marginBottom: 8},
-  successSub: {color: C.sub, fontSize: 14, textAlign: 'center'},
+  successSub: {color: C.sub, fontSize: 14, textAlign: 'center', marginBottom: 14},
+  phase0Badges: {flexDirection: 'row', gap: 8},
+  phase0Badge: {backgroundColor: C.purpleL, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20},
+  phase0BadgeTxt: {fontSize: 11, fontWeight: '700', color: C.purple},
+
+  // Searching card
+  searchingCard: {
+    width: 320,
+    backgroundColor: C.card,
+    borderRadius: 24,
+    padding: 26,
+    alignItems: 'center',
+    elevation: 16,
+  },
+  searchTitle: {fontSize: 16, fontWeight: '800', color: C.text, textAlign: 'center', marginBottom: 20},
+  radarWrap: {width: 144, height: 144, alignItems: 'center', justifyContent: 'center', marginBottom: 18},
+  radarRing: {
+    position: 'absolute',
+    width: 144,
+    height: 144,
+    borderRadius: 72,
+    borderWidth: 2,
+    borderColor: C.purple,
+  },
+  radarCore: {width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center'},
+  pcList: {width: '100%', gap: 8, marginBottom: 16},
+  pcRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#f9f8ff',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  pcAvatar: {width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center'},
+  pcInitial: {fontSize: 14, fontWeight: '900', color: '#fff'},
+  pcName: {fontSize: 13, fontWeight: '700', color: C.text},
+  pcDist: {fontSize: 11, color: C.sub},
+  searchDot: {width: 8, height: 8, borderRadius: 4, backgroundColor: C.green},
+  trustRow: {flexDirection: 'row', gap: 8, flexWrap: 'wrap', justifyContent: 'center'},
+  trustBadge: {backgroundColor: C.purpleL, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20},
+  trustBadgeTxt: {fontSize: 12, fontWeight: '700', color: C.purple},
+
+  // Provider found card
+  provFoundCard: {
+    width: 320,
+    backgroundColor: C.card,
+    borderRadius: 24,
+    padding: 26,
+    alignItems: 'center',
+    elevation: 16,
+  },
+  foundBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    backgroundColor: '#e8fbf0',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    marginBottom: 18,
+  },
+  foundBannerTxt: {fontSize: 14, fontWeight: '800', color: C.green},
+  assignedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    backgroundColor: C.purpleL,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    marginBottom: 18,
+  },
+  assignedBannerTxt: {fontSize: 14, fontWeight: '800', color: C.purple},
+  bigAvatar: {width: 82, height: 82, borderRadius: 41, alignItems: 'center', justifyContent: 'center', marginBottom: 12},
+  bigAvatarTxt: {fontSize: 36, fontWeight: '900', color: '#fff'},
+  provNameBig: {fontSize: 21, fontWeight: '900', color: C.text, marginBottom: 4},
+  provMeta: {fontSize: 13, color: C.sub, marginBottom: 14},
+  etaDistRow: {flexDirection: 'row', gap: 10, marginBottom: 10},
+  etaPill: {flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: C.purpleL, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20},
+  etaTxt: {fontSize: 13, fontWeight: '700', color: C.purple},
+  distPill: {flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#fff3e0', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20},
+  distTxt: {fontSize: 13, fontWeight: '700', color: C.orange},
+  onWayTxt: {fontSize: 13, color: C.sub},
 });

@@ -12,6 +12,7 @@ import {
   Platform,
   Keyboard,
   TextInput,
+  Animated,
 } from 'react-native';
 import ScreenNameEnum from '../../routes/screenName.enum';
 import LinearGradient from 'react-native-linear-gradient';
@@ -65,6 +66,7 @@ export default function HomeScreen({navigation}: {navigation: any}) {
   const isFocus = useIsFocused();
   const {lang} = useLanguage();
   const t = languageStrings[lang];
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
   // ── Search state ─────────────────────────────────────────────────────────
   const [searchText, setSearchText] = useState('');
@@ -76,6 +78,38 @@ export default function HomeScreen({navigation}: {navigation: any}) {
 
   const searchMode = searchFocused;
   const hasResults = searchText.trim().length >= 2;
+
+  // ── Live availability data ────────────────────────────────────────────────
+  const LIVE_PROVIDERS = [
+    {
+      emoji: '⚡',
+      label: lang === 'hi' ? 'Electrician' : 'Electricians',
+      count: 3,
+      bg: '#FFF3E0',
+      tc: '#E65100',
+    },
+    {
+      emoji: '🔧',
+      label: lang === 'hi' ? 'Plumber' : 'Plumbers',
+      count: 5,
+      bg: '#E3F2FD',
+      tc: '#1565C0',
+    },
+    {
+      emoji: '🧹',
+      label: lang === 'hi' ? 'Cleaner' : 'Cleaners',
+      count: 8,
+      bg: '#E8F5E9',
+      tc: '#2E7D32',
+    },
+    {
+      emoji: '❄️',
+      label: lang === 'hi' ? 'AC Expert' : 'AC Experts',
+      count: 2,
+      bg: '#E1F5FE',
+      tc: '#0277BD',
+    },
+  ];
 
   // ── Translated data arrays ────────────────────────────────────────────────
   const QUICK_SERVICES = [
@@ -116,6 +150,23 @@ export default function HomeScreen({navigation}: {navigation: any}) {
     sheetRef.current?.close();
   }, [isFocus]);
 
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.35,
+          duration: 650,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 650,
+          useNativeDriver: true,
+        }),
+      ]),
+    ).start();
+  }, [pulseAnim]);
+
   // ── Voice setup ───────────────────────────────────────────────────────────
   useEffect(() => {
     Voice.onSpeechResults = (e: any) => {
@@ -155,20 +206,19 @@ export default function HomeScreen({navigation}: {navigation: any}) {
   };
 
   // ── Search text change ────────────────────────────────────────────────────
-  const handleSearchChange = useCallback(
-    (text: string) => {
-      setSearchText(text);
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-      debounceRef.current = setTimeout(() => {
-        if (text.trim().length >= 2) {
-          setSearchResults(search(text));
-        } else {
-          setSearchResults([]);
-        }
-      }, 180);
-    },
-    [],
-  );
+  const handleSearchChange = useCallback((text: string) => {
+    setSearchText(text);
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+    debounceRef.current = setTimeout(() => {
+      if (text.trim().length >= 2) {
+        setSearchResults(search(text));
+      } else {
+        setSearchResults([]);
+      }
+    }, 180);
+  }, []);
 
   const handleSearchFocus = () => {
     setSearchFocused(true);
@@ -434,7 +484,6 @@ export default function HomeScreen({navigation}: {navigation: any}) {
           contentContainerStyle={s.scroll}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled">
-
           {/* Trust Strip */}
           <View style={s.trustStrip}>
             {TRUST_ITEMS.map((item, i) => (
@@ -443,6 +492,62 @@ export default function HomeScreen({navigation}: {navigation: any}) {
                 <Text style={s.trustText}>{item.text}</Text>
               </View>
             ))}
+          </View>
+
+          {/* Live Availability Card */}
+          <View style={s.liveCard}>
+            <View style={s.liveHeader}>
+              <Animated.View
+                style={[s.liveDot, {transform: [{scale: pulseAnim}]}]}
+              />
+              <Text style={s.liveHeaderTitle}>
+                {lang === 'hi' ? 'अभी आपके पास' : 'Available Now Nearby'}
+              </Text>
+              <View style={s.liveResponsePill}>
+                <Text style={s.liveResponseTxt}>⚡ 10-min</Text>
+              </View>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={s.liveScroll}>
+              {LIVE_PROVIDERS.map((prov, i) => (
+                <TouchableOpacity
+                  key={i}
+                  style={[s.liveChip, {backgroundColor: prov.bg}]}
+                  onPress={() =>
+                    navigation.navigate(ScreenNameEnum.NearbyProvidersScreen, {
+                      category: prov.label,
+                      title: `${prov.count} ${prov.label} Nearby`,
+                    })
+                  }
+                  activeOpacity={0.82}>
+                  <Text style={s.liveChipEmoji}>{prov.emoji}</Text>
+                  <View>
+                    <Text style={[s.liveChipCount, {color: prov.tc}]}>
+                      {prov.count}
+                    </Text>
+                    <Text style={[s.liveChipLabel, {color: prov.tc}]}>
+                      {prov.label}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity
+                style={s.urgentChip}
+                onPress={() =>
+                  navigation.navigate(ScreenNameEnum.NearbyProvidersScreen, {
+                    category: 'all',
+                    title: 'Urgent Service',
+                  })
+                }
+                activeOpacity={0.8}>
+                <Text style={s.urgentEmoji}>🚨</Text>
+                <Text style={s.urgentLabel}>
+                  {lang === 'hi' ? 'जरूरी\nसेवा' : 'Urgent\nService'}
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
           </View>
 
           {/* What do you need? */}
@@ -1175,4 +1280,81 @@ const s = StyleSheet.create({
     paddingVertical: 12,
   },
   browsAllText: {color: '#fff', fontWeight: '700', fontSize: 14},
+
+  // Live availability card
+  liveCard: {
+    backgroundColor: C.card,
+    borderRadius: 18,
+    paddingTop: 14,
+    paddingBottom: 12,
+    marginHorizontal: 16,
+    marginBottom: 14,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOpacity: 0.06,
+        shadowRadius: 10,
+        shadowOffset: {width: 0, height: 3},
+      },
+      android: {elevation: 3},
+    }),
+  },
+  liveHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    marginBottom: 12,
+    gap: 8,
+  },
+  liveDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#13B36B',
+  },
+  liveHeaderTitle: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '800',
+    color: C.text,
+  },
+  liveResponsePill: {
+    backgroundColor: '#fff3e0',
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 20,
+  },
+  liveResponseTxt: {fontSize: 11, fontWeight: '800', color: '#f97316'},
+  liveScroll: {paddingHorizontal: 16, gap: 10},
+  liveChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 14,
+    minWidth: 110,
+  },
+  liveChipEmoji: {fontSize: 20},
+  liveChipCount: {fontSize: 18, fontWeight: '900', lineHeight: 20},
+  liveChipLabel: {fontSize: 11, fontWeight: '600', lineHeight: 14},
+  urgentChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 14,
+    backgroundColor: '#FFF1F2',
+    borderWidth: 1.5,
+    borderColor: '#EF4444',
+    minWidth: 100,
+  },
+  urgentEmoji: {fontSize: 20},
+  urgentLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#EF4444',
+    lineHeight: 15,
+  },
 });
