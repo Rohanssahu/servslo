@@ -4,6 +4,7 @@ import {
   Text,
   ScrollView,
   StyleSheet,
+  StatusBar,
   TouchableOpacity,
   Linking,
 } from 'react-native';
@@ -109,6 +110,11 @@ export default function PoliciesScreen({navigation}: any) {
 
   return (
     <View style={styles.container}>
+      <StatusBar
+        translucent
+        backgroundColor="transparent"
+        barStyle="light-content"
+      />
       <LinearGradient
         colors={['#6E39F7', '#8E57FF', '#B78CFF']}
         start={{x: 0, y: 0}}

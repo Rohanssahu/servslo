@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  StatusBar,
   TouchableOpacity,
   Linking,
   TextInput,
@@ -95,6 +96,11 @@ const HelpSupportScreen = ({navigation}: any) => {
 
   return (
     <View style={styles.container}>
+      <StatusBar
+        translucent
+        backgroundColor="transparent"
+        barStyle="light-content"
+      />
       <LinearGradient
         colors={['#6E39F7', '#8E57FF', '#B78CFF']}
         start={{x: 0, y: 0}}

@@ -1,4 +1,4 @@
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {
   SafeAreaView,
   View,
@@ -10,6 +10,7 @@ import {
   Image,
   Dimensions,
   Platform,
+  Keyboard,
   TextInput,
 } from 'react-native';
 import ScreenNameEnum from '../../routes/screenName.enum';
@@ -21,89 +22,70 @@ import {useIsFocused} from '@react-navigation/native';
 import SpeakerButton from '../../component/SpeakerButton';
 import {useLanguage} from '../../language/LanguageContext';
 import languageStrings from '../../language/languageStrings';
+import Voice from '@react-native-voice/voice';
+import SmartSearchBar from '../../component/SmartSearchBar';
+import {
+  search,
+  POPULAR_SEARCHES,
+  getRecentSearches,
+  addRecentSearch,
+  ServiceResult,
+} from '../../utils/searchEngine';
 
 const {width} = Dimensions.get('window');
 const BOOKED_W = 158;
 
-// ─── Static data (price/rating rows stay outside; label arrays move inside) ──
-
 const DEALS = [
   {time: '60 min', price: '₹149', old: '₹169', off: '11% OFF', label: 'Basic Clean'},
   {time: '90 min', price: '₹219', old: '₹255', off: '14% OFF', label: 'Deep Clean'},
-  {time: '120 min',price: '₹289', old: '₹320', off: '10% OFF', label: 'Full Home'},
+  {time: '120 min', price: '₹289', old: '₹320', off: '10% OFF', label: 'Full Home'},
 ];
 
 const MOST_BOOKED = [
-  {title: 'Bathroom Deep Clean',   rating: '4.8', reviews: '2.8M', price: '₹519', emoji: '🚿'},
-  {title: '2 Bathroom Cleaning',   rating: '4.8', reviews: '2.8M', price: '₹950', oldPrice: '₹1,038', off: '8% OFF', emoji: '🏠'},
+  {title: 'Bathroom Deep Clean', rating: '4.8', reviews: '2.8M', price: '₹519', emoji: '🚿'},
+  {title: '2 Bathroom Cleaning', rating: '4.8', reviews: '2.8M', price: '₹950', oldPrice: '₹1,038', off: '8% OFF', emoji: '🏠'},
   {title: 'Washing Machine Clean', rating: '4.8', reviews: '319K', price: '₹160', emoji: '🫧'},
 ];
-
-// ────────────────────────────────────────────────────────────────────────────
 
 const HOME_SCRIPT_HI =
   'नमस्ते! ServSLO में आपका स्वागत है। यहाँ घर बैठे electrician, plumber, cleaning और 50 से ज़्यादा services बुक करें। हमारे verified expert सिर्फ 10 मिनट में आपके घर पहुँचेंगे। आज कौन सी service चाहिए?';
 const HOME_SCRIPT_EN =
   'Welcome to ServSLO! Book electricians, plumbers, cleaning and 50-plus home services right from home. Our verified experts arrive in just 10 minutes. What service do you need today?';
 
+const VOICE_HINTS = [
+  '"fan repair chahiye"',
+  '"bathroom cleaning karani hai"',
+  '"AC cooling nahi kar raha"',
+  '"plumber chahiye"',
+];
+
 export default function HomeScreen({navigation}: {navigation: any}) {
   const sheetRef = useRef<ServiceBottomSheetRef>(null);
-  const [searchText, setSearchText] = useState('');
+  const searchInputRef = useRef<TextInput>(null);
   const isFocus = useIsFocused();
   const {lang} = useLanguage();
   const t = languageStrings[lang];
 
-  // ── Translated data arrays (depend on `t`) ───────────────────────────────
+  // ── Search state ─────────────────────────────────────────────────────────
+  const [searchText, setSearchText] = useState('');
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [searchResults, setSearchResults] = useState<ServiceResult[]>([]);
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const debounceRef = useRef<any>(null);
+
+  const searchMode = searchFocused;
+  const hasResults = searchText.trim().length >= 2;
+
+  // ── Translated data arrays ────────────────────────────────────────────────
   const QUICK_SERVICES = [
-    {
-      label: t.electrician,
-      emoji: '⚡',
-      desc: t.wiringRepairs,
-      rating: '4.8',
-      basePrice: 199,
-    },
-    {
-      label: t.plumber,
-      emoji: '🔧',
-      desc: t.leaksPipesTaps,
-      rating: '4.7',
-      basePrice: 149,
-    },
-    {
-      label: t.cleaning,
-      emoji: '🧹',
-      desc: t.fullHomeClean,
-      rating: '4.9',
-      basePrice: 299,
-    },
-    {
-      label: t.acRepair,
-      emoji: '❄️',
-      desc: t.serviceRepair,
-      rating: '4.8',
-      basePrice: 349,
-    },
-    {
-      label: t.carpenter,
-      emoji: '🪚',
-      desc: t.furnitureDoors,
-      rating: '4.6',
-      basePrice: 249,
-    },
-    {
-      label: t.painting,
-      emoji: '🖌️',
-      desc: t.interiorExterior,
-      rating: '4.7',
-      basePrice: 499,
-    },
-    {
-      label: t.pestControl,
-      emoji: '🐛',
-      desc: t.allPestTypes,
-      rating: '4.8',
-      basePrice: 599,
-    },
+    {label: t.electrician, emoji: '⚡', desc: t.wiringRepairs, rating: '4.8', basePrice: 199},
+    {label: t.plumber, emoji: '🔧', desc: t.leaksPipesTaps, rating: '4.7', basePrice: 149},
+    {label: t.cleaning, emoji: '🧹', desc: t.fullHomeClean, rating: '4.9', basePrice: 299},
+    {label: t.acRepair, emoji: '❄️', desc: t.serviceRepair, rating: '4.8', basePrice: 349},
+    {label: t.carpenter, emoji: '🪚', desc: t.furnitureDoors, rating: '4.6', basePrice: 249},
+    {label: t.painting, emoji: '🖌️', desc: t.interiorExterior, rating: '4.7', basePrice: 499},
+    {label: t.pestControl, emoji: '🐛', desc: t.allPestTypes, rating: '4.8', basePrice: 599},
     {label: t.more, emoji: '➕', desc: '', rating: '4.8', basePrice: 0},
   ];
   const SALON_ITEMS = [
@@ -134,15 +116,91 @@ export default function HomeScreen({navigation}: {navigation: any}) {
     sheetRef.current?.close();
   }, [isFocus]);
 
-  const handleSearch = () => {
-    console.log('Searching for:', searchText);
+  // ── Voice setup ───────────────────────────────────────────────────────────
+  useEffect(() => {
+    Voice.onSpeechResults = (e: any) => {
+      const spoken: string = e.value?.[0] ?? '';
+      setIsListening(false);
+      if (spoken) {
+        setSearchText(spoken);
+        setSearchResults(search(spoken));
+        setSearchFocused(true);
+      }
+    };
+    Voice.onSpeechError = () => setIsListening(false);
+    Voice.onSpeechEnd = () => setIsListening(false);
+    return () => {
+      Voice.destroy().then(Voice.removeAllListeners);
+    };
+  }, []);
+
+  const startListening = async () => {
+    try {
+      setIsListening(true);
+      setSearchText('');
+      setSearchResults([]);
+      setSearchFocused(true);
+      Keyboard.dismiss();
+      await Voice.start(lang === 'hi' ? 'hi-IN' : 'en-IN');
+    } catch {
+      setIsListening(false);
+    }
   };
 
+  const stopListening = async () => {
+    try {
+      await Voice.stop();
+    } catch {}
+    setIsListening(false);
+  };
+
+  // ── Search text change ────────────────────────────────────────────────────
+  const handleSearchChange = useCallback(
+    (text: string) => {
+      setSearchText(text);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        if (text.trim().length >= 2) {
+          setSearchResults(search(text));
+        } else {
+          setSearchResults([]);
+        }
+      }, 180);
+    },
+    [],
+  );
+
+  const handleSearchFocus = () => {
+    setSearchFocused(true);
+    getRecentSearches().then(setRecentSearches);
+  };
+
+  const handleSearchCancel = () => {
+    setSearchFocused(false);
+    setSearchText('');
+    setSearchResults([]);
+    Keyboard.dismiss();
+    if (isListening) stopListening();
+  };
+
+  const handlePopularTap = (q: string) => {
+    setSearchText(q);
+    setSearchResults(search(q));
+    searchInputRef.current?.focus();
+  };
+
+  const handleServiceSelect = async (svc: ServiceResult) => {
+    await addRecentSearch(searchText || svc.label);
+    handleSearchCancel();
+    navigation.navigate(ScreenNameEnum.ServiceBookingScreen, {service: svc});
+  };
+
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={s.safe}>
-      <StatusBar translucent backgroundColor="transparent" />
+      <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
 
-      {/* ── Header ─────────────────────────────────────────────────────── */}
+      {/* ── Header ──────────────────────────────────────────────────────── */}
       <LinearGradient
         colors={['#6E39F7', '#8E57FF', '#B78CFF']}
         start={{x: 0.1, y: 0}}
@@ -160,7 +218,6 @@ export default function HomeScreen({navigation}: {navigation: any}) {
             </Text>
           </View>
         </TouchableOpacity>
-
         <View style={s.headerRight}>
           <TouchableOpacity
             style={s.bellBtn}
@@ -177,239 +234,475 @@ export default function HomeScreen({navigation}: {navigation: any}) {
         </View>
       </LinearGradient>
 
-      {/* ── Scroll Body ─────────────────────────────────────────────────── */}
-      <ScrollView
-        contentContainerStyle={s.scroll}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled">
+      {/* ── Smart Search Bar (outside ScrollView, always visible) ─────── */}
+      <View style={s.searchArea}>
+        <SmartSearchBar
+          inputRef={searchInputRef}
+          value={searchText}
+          onChangeText={handleSearchChange}
+          onFocus={handleSearchFocus}
+          isListening={isListening}
+          onMicPress={isListening ? stopListening : startListening}
+          lang={lang}
+          isFocused={searchFocused}
+          style={s.searchBarStyle}
+        />
+        {searchFocused && (
+          <TouchableOpacity onPress={handleSearchCancel} style={s.cancelBtn} activeOpacity={0.7}>
+            <Text style={s.cancelText}>
+              {lang === 'hi' ? 'रद्द' : 'Cancel'}
+            </Text>
+          </TouchableOpacity>
+        )}
+      </View>
 
-        {/* Search */}
-        <View style={s.searchBox}>
-          <Text style={s.searchIcon}>🔍</Text>
-          <TextInput
-            style={s.searchInput}
-            placeholder={t.searchPlaceholder}
-            placeholderTextColor="#aaa"
-            value={searchText}
-            onChangeText={setSearchText}
-            onSubmitEditing={handleSearch}
-            returnKeyType="search"
-          />
-          {searchText.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchText('')} hitSlop={{top:8,bottom:8,left:8,right:8}}>
-              <Text style={s.clearText}>✕</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+      {/* ── Conditional: Search Mode OR Normal Home Content ───────────── */}
+      {searchMode ? (
+        /* ── SEARCH MODE ─────────────────────────────────────────────── */
+        <ScrollView
+          style={s.searchScroll}
+          contentContainerStyle={s.searchScrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}>
 
-        {/* Trust Strip */}
-        <View style={s.trustStrip}>
-          {TRUST_ITEMS.map((item, i) => (
-            <View key={i} style={s.trustItem}>
-              <Text style={s.trustEmoji}>{item.icon}</Text>
-              <Text style={s.trustText}>{item.text}</Text>
-            </View>
-          ))}
-        </View>
+          {!hasResults ? (
+            /* Empty query — show hints & popular */
+            <>
+              {/* Voice hint banner */}
+              <View style={s.voiceBanner}>
+                <Text style={s.voiceBannerIcon}>🎙️</Text>
+                <View style={{flex: 1}}>
+                  <Text style={s.voiceBannerTitle}>
+                    {lang === 'hi' ? 'माइक टैप करें और बोलें' : 'Tap mic and speak naturally'}
+                  </Text>
+                  <Text style={s.voiceBannerSub}>
+                    {VOICE_HINTS.join('  ·  ')}
+                  </Text>
+                </View>
+              </View>
 
-        {/* What do you need? */}
-        <View style={s.card}>
-          <View style={s.cardTitleRow}>
-            <Text style={s.cardTitle}>{t.whatDoYouNeed}</Text>
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={() => navigation.navigate(ScreenNameEnum.AllServicesScreen, {category: 'all', title: 'All Services'})}>
-              <Text style={s.seeAll}>{t.seeAll}</Text>
-            </TouchableOpacity>
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.storyList}>
-            {QUICK_SERVICES.map((item, i) => (
-              <TouchableOpacity
-                key={i}
-                style={s.storyItem}
-                onPress={() => {
-                  if (item.basePrice === 0) {
-                    navigation.navigate(ScreenNameEnum.AllServicesScreen, {category: 'all', title: 'All Services'});
-                  } else {
-                    navigation.navigate(ScreenNameEnum.ServiceBookingScreen, {service: item});
-                  }
-                }}
-                activeOpacity={0.8}>
-                <LinearGradient
-                  colors={['#6E39F7', '#C084FC', '#F0ABFC']}
-                  start={{x: 0, y: 1}}
-                  end={{x: 1, y: 0}}
-                  style={s.storyRing}>
-                  <View style={s.storyInner}>
-                    <Text style={s.storyEmoji}>{item.emoji}</Text>
+              {/* Recent searches */}
+              {recentSearches.length > 0 && (
+                <View style={s.searchSection}>
+                  <Text style={s.searchSectionTitle}>
+                    {lang === 'hi' ? 'हाल की खोज' : 'Recent Searches'}
+                  </Text>
+                  <View style={s.chipRow}>
+                    {recentSearches.map((r, i) => (
+                      <TouchableOpacity
+                        key={i}
+                        style={s.chip}
+                        onPress={() => handlePopularTap(r)}
+                        activeOpacity={0.75}>
+                        <Text style={s.chipEmoji}>🕐</Text>
+                        <Text style={s.chipText}>{r}</Text>
+                      </TouchableOpacity>
+                    ))}
                   </View>
-                </LinearGradient>
-                <Text style={s.storyLabel} numberOfLines={2}>{item.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
+                </View>
+              )}
 
-        {/* Quick Cleaning Packages */}
-        <View style={s.card}>
-          <View style={s.cardTitleRow}>
-            <Text style={s.cardTitle}>{t.quickCleaning}</Text>
-            <View style={s.livePill}>
-              <Text style={s.livePillText}>{t.livePill}</Text>
-            </View>
-          </View>
-          <Text style={s.cardSub}>{t.arrivesIn10Min}</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.hPad}>
-            {DEALS.map((d, i) => (
-              <View key={i} style={s.dealCard}>
-                <View style={s.dealBadge}>
-                  <Text style={s.dealBadgeText}>{d.off}</Text>
+              {/* Popular searches */}
+              <View style={s.searchSection}>
+                <Text style={s.searchSectionTitle}>
+                  {lang === 'hi' ? 'लोकप्रिय खोज' : 'Popular Searches'}
+                </Text>
+                <View style={s.chipRow}>
+                  {POPULAR_SEARCHES.map((p, i) => (
+                    <TouchableOpacity
+                      key={i}
+                      style={[s.chip, s.chipPopular]}
+                      onPress={() => handlePopularTap(p)}
+                      activeOpacity={0.75}>
+                      <Text style={s.chipEmoji}>🔥</Text>
+                      <Text style={s.chipText}>{p}</Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
-                <Text style={s.dealLabel}>{d.label}</Text>
-                <Text style={s.dealTime}>{d.time}</Text>
-                <View style={s.dealPriceRow}>
-                  <Text style={s.dealPrice}>{d.price}</Text>
-                  <Text style={s.dealOld}>{d.old}</Text>
+              </View>
+
+              {/* Quick category shortcuts */}
+              <View style={s.searchSection}>
+                <Text style={s.searchSectionTitle}>
+                  {lang === 'hi' ? 'श्रेणी के अनुसार ब्राउज़ करें' : 'Browse by Category'}
+                </Text>
+                <View style={s.catRow}>
+                  {[
+                    {emoji: '⚡', label: lang === 'hi' ? 'बिजली' : 'Electrical'},
+                    {emoji: '🔧', label: lang === 'hi' ? 'प्लंबर' : 'Plumbing'},
+                    {emoji: '🧹', label: lang === 'hi' ? 'सफाई' : 'Cleaning'},
+                    {emoji: '❄️', label: lang === 'hi' ? 'AC' : 'AC'},
+                    {emoji: '💆', label: lang === 'hi' ? 'सैलून' : 'Salon'},
+                    {emoji: '🛠️', label: lang === 'hi' ? 'उपकरण' : 'Appliance'},
+                  ].map((cat, i) => (
+                    <TouchableOpacity
+                      key={i}
+                      style={s.catTile}
+                      onPress={() =>
+                        navigation.navigate(ScreenNameEnum.AllServicesScreen, {
+                          category: ['quick', 'quick', 'cleaning', 'quick', 'salon', 'appliance'][i],
+                          title: cat.label,
+                        })
+                      }
+                      activeOpacity={0.75}>
+                      <Text style={s.catEmoji}>{cat.emoji}</Text>
+                      <Text style={s.catLabel}>{cat.label}</Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
-                <TouchableOpacity style={s.bookBtnFill} onPress={() => sheetRef.current?.open()} activeOpacity={0.8}>
-                  <Text style={s.bookBtnFillText}>{t.bookNow}</Text>
+              </View>
+            </>
+          ) : searchResults.length > 0 ? (
+            /* Results list */
+            <>
+              <Text style={s.resultsHeader}>
+                {lang === 'hi'
+                  ? `"${searchText}" के लिए ${searchResults.length} सेवाएं मिलीं`
+                  : `${searchResults.length} services found for "${searchText}"`}
+              </Text>
+              {searchResults.map((svc, i) => (
+                <TouchableOpacity
+                  key={i}
+                  style={s.resultRow}
+                  onPress={() => handleServiceSelect(svc)}
+                  activeOpacity={0.78}>
+                  <LinearGradient
+                    colors={['#f3eeff', '#e6d5ff']}
+                    style={s.resultEmojiBox}>
+                    <Text style={s.resultEmoji}>{svc.emoji}</Text>
+                  </LinearGradient>
+                  <View style={s.resultInfo}>
+                    <Text style={s.resultLabel}>{svc.label}</Text>
+                    <Text style={s.resultDesc}>{svc.desc}</Text>
+                    <Text style={s.resultRating}>⭐ {svc.rating}</Text>
+                  </View>
+                  <View style={s.resultRight}>
+                    <Text style={s.resultPrice}>{svc.price}</Text>
+                    <View style={s.resultBookBtn}>
+                      <Text style={s.resultBookText}>
+                        {lang === 'hi' ? 'बुक' : 'Book'}
+                      </Text>
+                    </View>
+                  </View>
                 </TouchableOpacity>
-              </View>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* Most Booked */}
-        <View style={s.card}>
-          <View style={s.cardTitleRow}>
-            <Text style={s.cardTitle}>{t.mostBooked}</Text>
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={() => navigation.navigate(ScreenNameEnum.AllServicesScreen, {category: 'cleaning', title: 'Most Booked'})}>
-              <Text style={s.seeAll}>{t.seeAll}</Text>
-            </TouchableOpacity>
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.hPad}>
-            {MOST_BOOKED.map((item, i) => (
+              ))}
               <TouchableOpacity
-                key={i}
-                style={[s.bookedCard, {width: BOOKED_W}]}
-                onPress={() => sheetRef.current?.open()}
-                activeOpacity={0.85}>
-                {item.off && (
-                  <View style={s.bookedBadge}>
-                    <Text style={s.bookedBadgeText}>{item.off}</Text>
-                  </View>
-                )}
-                <View style={s.bookedEmojiBox}>
-                  <Text style={s.bookedEmoji}>{item.emoji}</Text>
-                </View>
-                <Text style={s.bookedTitle} numberOfLines={2}>{item.title}</Text>
-                <Text style={s.bookedRating}>⭐ {item.rating} ({item.reviews})</Text>
-                <View style={s.bookedFooter}>
-                  <View>
-                    <Text style={s.bookedPrice}>{item.price}</Text>
-                    {item.oldPrice && <Text style={s.bookedOldPrice}>{item.oldPrice}</Text>}
-                  </View>
-                  <View style={s.addBtn}>
-                    <Text style={s.addBtnText}>+</Text>
-                  </View>
-                </View>
+                style={s.seeAllBtn}
+                onPress={() => {
+                  handleSearchCancel();
+                  navigation.navigate(ScreenNameEnum.AllServicesScreen, {
+                    category: 'all',
+                    title: lang === 'hi' ? 'सभी सेवाएं' : 'All Services',
+                  });
+                }}
+                activeOpacity={0.7}>
+                <Text style={s.seeAllText}>
+                  {lang === 'hi' ? 'सभी सेवाएं देखें →' : 'See all services →'}
+                </Text>
               </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* Our Services */}
-        <View style={s.card}>
-          <Text style={s.cardTitle}>{t.ourServices}</Text>
-          <Text style={s.cardSub}>{t.multipleServices}</Text>
-          <View style={s.bigRow}>
-            <TouchableOpacity style={s.bigTile} activeOpacity={0.8}>
-              <Text style={s.bigTileText}>{t.everydayCleaning}</Text>
-              <Image source={require('../../assets/images/mop.png')} style={s.bigTileImg} />
-            </TouchableOpacity>
-            <TouchableOpacity style={s.bigTile} activeOpacity={0.8}>
-              <Text style={s.bigTileText}>{t.weeklyCleaning}</Text>
-              <Image source={require('../../assets/images/cleaning.jpg')} style={s.bigTileImg} />
-            </TouchableOpacity>
-          </View>
-          <View style={s.smallRow}>
-            {SMALL_TILES.map((item, i) => (
-              <TouchableOpacity key={i} style={s.smallTile} activeOpacity={0.75}>
-                <Text style={s.smallTileEmoji}>{item.emoji}</Text>
-                <Text style={s.smallTileLabel}>{item.label}</Text>
+            </>
+          ) : (
+            /* No results */
+            <View style={s.noResults}>
+              <Text style={s.noResultsEmoji}>🔍</Text>
+              <Text style={s.noResultsTitle}>
+                {lang === 'hi'
+                  ? `"${searchText}" के लिए कोई सेवा नहीं`
+                  : `No results for "${searchText}"`}
+              </Text>
+              <Text style={s.noResultsSub}>
+                {lang === 'hi'
+                  ? 'अलग शब्द आज़माएं, जैसे "fan", "bijli", "nal"'
+                  : 'Try different words like "fan", "nal", "cleaning"'}
+              </Text>
+              <TouchableOpacity
+                style={s.browsAllBtn}
+                onPress={() => {
+                  handleSearchCancel();
+                  navigation.navigate(ScreenNameEnum.AllServicesScreen, {category: 'all', title: 'All Services'});
+                }}>
+                <Text style={s.browsAllText}>
+                  {lang === 'hi' ? 'सभी सेवाएं देखें' : 'Browse all services'}
+                </Text>
               </TouchableOpacity>
-            ))}
-          </View>
-        </View>
+            </View>
+          )}
+        </ScrollView>
+      ) : (
+        /* ── NORMAL HOME CONTENT ──────────────────────────────────────── */
+        <ScrollView
+          contentContainerStyle={s.scroll}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled">
 
-        {/* Salon for Women */}
-        <View style={s.card}>
-          <View style={s.cardTitleRow}>
-            <Text style={s.cardTitle}>{t.salonForWomen}</Text>
-            <TouchableOpacity activeOpacity={0.7}>
-              <Text style={s.seeAll}>{t.seeAll}</Text>
-            </TouchableOpacity>
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.hPad}>
-            {SALON_ITEMS.map((srv, i) => (
-              <TouchableOpacity key={i} style={s.srvTile} onPress={() => sheetRef.current?.open()} activeOpacity={0.8}>
-                <View style={s.srvEmojiBox}>
-                  <Text style={s.srvEmoji}>{srv.emoji}</Text>
-                </View>
-                <Text style={s.srvLabel}>{srv.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* Appliance Repair */}
-        <View style={s.card}>
-          <View style={s.cardTitleRow}>
-            <Text style={s.cardTitle}>{t.applianceRepair}</Text>
-            <TouchableOpacity activeOpacity={0.7}>
-              <Text style={s.seeAll}>{t.seeAll}</Text>
-            </TouchableOpacity>
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.hPad}>
-            {APPLIANCE_ITEMS.map((srv, i) => (
-              <TouchableOpacity key={i} style={s.srvTile} onPress={() => sheetRef.current?.open()} activeOpacity={0.8}>
-                <View style={s.applianceEmojiBox}>
-                  <Text style={s.srvEmoji}>{srv.emoji}</Text>
-                </View>
-                <Text style={s.srvLabel}>{srv.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* Trained Professionals */}
-        <View style={[s.card, s.proCard]}>
-          <View style={s.proCardContent}>
-            <Text style={s.proTitle}>{t.trainedProfessionals}</Text>
-            <Text style={s.proDesc}>{t.backgroundVerified}</Text>
-            <View style={s.proBadgeRow}>
-              <View style={s.proBadge}>
-                <Text style={s.proBadgeText}>{t.verified}</Text>
+          {/* Trust Strip */}
+          <View style={s.trustStrip}>
+            {TRUST_ITEMS.map((item, i) => (
+              <View key={i} style={s.trustItem}>
+                <Text style={s.trustEmoji}>{item.icon}</Text>
+                <Text style={s.trustText}>{item.text}</Text>
               </View>
-              <View style={s.proBadge}>
-                <Text style={s.proBadgeText}>{t.insured}</Text>
+            ))}
+          </View>
+
+          {/* What do you need? */}
+          <View style={s.card}>
+            <View style={s.cardTitleRow}>
+              <Text style={s.cardTitle}>{t.whatDoYouNeed}</Text>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() =>
+                  navigation.navigate(ScreenNameEnum.AllServicesScreen, {
+                    category: 'all',
+                    title: 'All Services',
+                  })
+                }>
+                <Text style={s.seeAll}>{t.seeAll}</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={s.storyList}>
+              {QUICK_SERVICES.map((item, i) => (
+                <TouchableOpacity
+                  key={i}
+                  style={s.storyItem}
+                  onPress={() => {
+                    if (item.basePrice === 0) {
+                      navigation.navigate(ScreenNameEnum.AllServicesScreen, {
+                        category: 'all',
+                        title: 'All Services',
+                      });
+                    } else {
+                      navigation.navigate(ScreenNameEnum.ServiceBookingScreen, {service: item});
+                    }
+                  }}
+                  activeOpacity={0.8}>
+                  <LinearGradient
+                    colors={['#6E39F7', '#C084FC', '#F0ABFC']}
+                    start={{x: 0, y: 1}}
+                    end={{x: 1, y: 0}}
+                    style={s.storyRing}>
+                    <View style={s.storyInner}>
+                      <Text style={s.storyEmoji}>{item.emoji}</Text>
+                    </View>
+                  </LinearGradient>
+                  <Text style={s.storyLabel} numberOfLines={2}>
+                    {item.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+
+          {/* Quick Cleaning Packages */}
+          <View style={s.card}>
+            <View style={s.cardTitleRow}>
+              <Text style={s.cardTitle}>{t.quickCleaning}</Text>
+              <View style={s.livePill}>
+                <Text style={s.livePillText}>{t.livePill}</Text>
               </View>
             </View>
+            <Text style={s.cardSub}>{t.arrivesIn10Min}</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={s.hPad}>
+              {DEALS.map((d, i) => (
+                <View key={i} style={s.dealCard}>
+                  <View style={s.dealBadge}>
+                    <Text style={s.dealBadgeText}>{d.off}</Text>
+                  </View>
+                  <Text style={s.dealLabel}>{d.label}</Text>
+                  <Text style={s.dealTime}>{d.time}</Text>
+                  <View style={s.dealPriceRow}>
+                    <Text style={s.dealPrice}>{d.price}</Text>
+                    <Text style={s.dealOld}>{d.old}</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={s.bookBtnFill}
+                    onPress={() => sheetRef.current?.open()}
+                    activeOpacity={0.8}>
+                    <Text style={s.bookBtnFillText}>{t.bookNow}</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </ScrollView>
           </View>
-          <Image source={require('../../assets/images/glove.jpg')} style={s.proImg} />
-        </View>
 
-        <View style={s.bottomSpacer} />
-      </ScrollView>
+          {/* Most Booked */}
+          <View style={s.card}>
+            <View style={s.cardTitleRow}>
+              <Text style={s.cardTitle}>{t.mostBooked}</Text>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() =>
+                  navigation.navigate(ScreenNameEnum.AllServicesScreen, {
+                    category: 'cleaning',
+                    title: 'Most Booked',
+                  })
+                }>
+                <Text style={s.seeAll}>{t.seeAll}</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={s.hPad}>
+              {MOST_BOOKED.map((item, i) => (
+                <TouchableOpacity
+                  key={i}
+                  style={[s.bookedCard, {width: BOOKED_W}]}
+                  onPress={() => sheetRef.current?.open()}
+                  activeOpacity={0.85}>
+                  {item.off && (
+                    <View style={s.bookedBadge}>
+                      <Text style={s.bookedBadgeText}>{item.off}</Text>
+                    </View>
+                  )}
+                  <View style={s.bookedEmojiBox}>
+                    <Text style={s.bookedEmoji}>{item.emoji}</Text>
+                  </View>
+                  <Text style={s.bookedTitle} numberOfLines={2}>
+                    {item.title}
+                  </Text>
+                  <Text style={s.bookedRating}>
+                    ⭐ {item.rating} ({item.reviews})
+                  </Text>
+                  <View style={s.bookedFooter}>
+                    <View>
+                      <Text style={s.bookedPrice}>{item.price}</Text>
+                      {item.oldPrice && (
+                        <Text style={s.bookedOldPrice}>{item.oldPrice}</Text>
+                      )}
+                    </View>
+                    <View style={s.addBtn}>
+                      <Text style={s.addBtnText}>+</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
 
-      <ServiceBottomSheet ref={sheetRef} onClose={() => console.log('Sheet closed')} />
+          {/* Our Services */}
+          <View style={s.card}>
+            <Text style={s.cardTitle}>{t.ourServices}</Text>
+            <Text style={s.cardSub}>{t.multipleServices}</Text>
+            <View style={s.bigRow}>
+              <TouchableOpacity style={s.bigTile} activeOpacity={0.8}>
+                <Text style={s.bigTileText}>{t.everydayCleaning}</Text>
+                <Image
+                  source={require('../../assets/images/mop.png')}
+                  style={s.bigTileImg}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity style={s.bigTile} activeOpacity={0.8}>
+                <Text style={s.bigTileText}>{t.weeklyCleaning}</Text>
+                <Image
+                  source={require('../../assets/images/cleaning.jpg')}
+                  style={s.bigTileImg}
+                />
+              </TouchableOpacity>
+            </View>
+            <View style={s.smallRow}>
+              {SMALL_TILES.map((item, i) => (
+                <TouchableOpacity key={i} style={s.smallTile} activeOpacity={0.75}>
+                  <Text style={s.smallTileEmoji}>{item.emoji}</Text>
+                  <Text style={s.smallTileLabel}>{item.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Salon for Women */}
+          <View style={s.card}>
+            <View style={s.cardTitleRow}>
+              <Text style={s.cardTitle}>{t.salonForWomen}</Text>
+              <TouchableOpacity activeOpacity={0.7}>
+                <Text style={s.seeAll}>{t.seeAll}</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={s.hPad}>
+              {SALON_ITEMS.map((srv, i) => (
+                <TouchableOpacity
+                  key={i}
+                  style={s.srvTile}
+                  onPress={() => sheetRef.current?.open()}
+                  activeOpacity={0.8}>
+                  <View style={s.srvEmojiBox}>
+                    <Text style={s.srvEmoji}>{srv.emoji}</Text>
+                  </View>
+                  <Text style={s.srvLabel}>{srv.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+
+          {/* Appliance Repair */}
+          <View style={s.card}>
+            <View style={s.cardTitleRow}>
+              <Text style={s.cardTitle}>{t.applianceRepair}</Text>
+              <TouchableOpacity activeOpacity={0.7}>
+                <Text style={s.seeAll}>{t.seeAll}</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={s.hPad}>
+              {APPLIANCE_ITEMS.map((srv, i) => (
+                <TouchableOpacity
+                  key={i}
+                  style={s.srvTile}
+                  onPress={() => sheetRef.current?.open()}
+                  activeOpacity={0.8}>
+                  <View style={s.applianceEmojiBox}>
+                    <Text style={s.srvEmoji}>{srv.emoji}</Text>
+                  </View>
+                  <Text style={s.srvLabel}>{srv.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+
+          {/* Trained Professionals */}
+          <View style={[s.card, s.proCard]}>
+            <View style={s.proCardContent}>
+              <Text style={s.proTitle}>{t.trainedProfessionals}</Text>
+              <Text style={s.proDesc}>{t.backgroundVerified}</Text>
+              <View style={s.proBadgeRow}>
+                <View style={s.proBadge}>
+                  <Text style={s.proBadgeText}>{t.verified}</Text>
+                </View>
+                <View style={s.proBadge}>
+                  <Text style={s.proBadgeText}>{t.insured}</Text>
+                </View>
+              </View>
+            </View>
+            <Image
+              source={require('../../assets/images/glove.jpg')}
+              style={s.proImg}
+            />
+          </View>
+
+          <View style={s.bottomSpacer} />
+        </ScrollView>
+      )}
+
+      <ServiceBottomSheet
+        ref={sheetRef}
+        onClose={() => console.log('Sheet closed')}
+      />
     </SafeAreaView>
   );
 }
 
-// ─── Color tokens ────────────────────────────────────────────────────────────
+// ─── Color tokens ─────────────────────────────────────────────────────────────
 const C = {
   purple: '#4d2b98',
   purpleL: '#f3eeff',
@@ -424,7 +717,6 @@ const C = {
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-
   safe: {flex: 1, backgroundColor: C.bg},
 
   // Header
@@ -436,23 +728,10 @@ const s = StyleSheet.create({
   },
   addressBlock: {flex: 1},
   addressLabel: {color: '#fff', fontSize: 20, fontWeight: '500', marginBottom: 2},
-  addressRow: {flexDirection: 'row', alignItems: 'center',marginLeft:-5},
+  addressRow: {flexDirection: 'row', alignItems: 'center', marginLeft: -5},
   addressPin: {color: 'rgba(255,255,255,0.85)', fontSize: 13},
   addressText: {color: '#fff', fontWeight: '700', fontSize: 14, flex: 1},
-  chevron: {color: '#fff', fontSize: 16, marginLeft: 4},
   headerRight: {flexDirection: 'row', alignItems: 'center'},
-  headerPill: {
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 20,
-    marginLeft: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  headerPillText: {color: '#fff', fontWeight: '700', fontSize: 13},
-  walletPill: {backgroundColor: '#fff'},
-  walletText: {color: C.purple, fontWeight: '700', fontSize: 13},
   bellBtn: {
     marginLeft: 8,
     width: 36,
@@ -463,28 +742,34 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   bellText: {fontSize: 17},
+  speakerMargin: {marginLeft: 8},
+
+  // Search area (between header and scroll)
+  searchArea: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingRight: 16,
+    paddingVertical: 10,
+    backgroundColor: C.bg,
+  },
+  searchBarStyle: {
+    flex: 1,
+    marginLeft: 16,
+    marginTop: 0,
+    marginBottom: 0,
+  },
+  cancelBtn: {
+    marginLeft: 10,
+    paddingVertical: 6,
+  },
+  cancelText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: C.purple,
+  },
 
   // Scroll
   scroll: {paddingBottom: 96, paddingTop: 4},
-
-  // Search
-  searchBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: C.card,
-    marginHorizontal: 16,
-    marginVertical: 12,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    height: 52,
-    ...Platform.select({
-      ios:     {shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: {width: 0, height: 2}},
-      android: {elevation: 3},
-    }),
-  },
-  searchIcon: {fontSize: 18, marginRight: 8},
-  searchInput: {flex: 1, fontSize: 15, color: C.text},
-  clearText: {color: '#bbb', fontSize: 16, paddingLeft: 8},
 
   // Trust strip
   trustStrip: {
@@ -509,15 +794,24 @@ const s = StyleSheet.create({
     marginHorizontal: 16,
     marginBottom: 14,
     ...Platform.select({
-      ios:     {shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 10, shadowOffset: {width: 0, height: 3}},
+      ios: {
+        shadowColor: '#000',
+        shadowOpacity: 0.06,
+        shadowRadius: 10,
+        shadowOffset: {width: 0, height: 3},
+      },
       android: {elevation: 3},
     }),
   },
   cardTitle: {fontSize: 18, fontWeight: '800', color: C.purple, marginBottom: 4},
-  cardTitleRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4},
+  cardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
   cardSub: {fontSize: 13, color: C.sub, marginBottom: 14},
   seeAll: {fontSize: 13, fontWeight: '700', color: C.purple},
-
   livePill: {
     backgroundColor: '#fff3e0',
     paddingHorizontal: 9,
@@ -526,7 +820,7 @@ const s = StyleSheet.create({
   },
   livePillText: {fontSize: 11, fontWeight: '800', color: '#f97316'},
 
-  // Story-style horizontal scroll (What do you need?)
+  // Story-style horizontal scroll
   storyList: {paddingVertical: 10, paddingRight: 4},
   storyItem: {alignItems: 'center', marginRight: 18, width: 68},
   storyRing: {
@@ -620,7 +914,11 @@ const s = StyleSheet.create({
   bookedEmoji: {fontSize: 34},
   bookedTitle: {fontSize: 13, fontWeight: '700', color: C.text, marginBottom: 4, lineHeight: 18},
   bookedRating: {fontSize: 11, color: C.sub, marginBottom: 6},
-  bookedFooter: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end'},
+  bookedFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+  },
   bookedPrice: {fontSize: 15, fontWeight: '800', color: C.text},
   bookedOldPrice: {fontSize: 11, color: '#bbb', textDecorationLine: 'line-through'},
   addBtn: {
@@ -661,12 +959,8 @@ const s = StyleSheet.create({
   smallTileEmoji: {fontSize: 24, marginBottom: 4},
   smallTileLabel: {fontSize: 11, fontWeight: '600', color: C.text, textAlign: 'center'},
 
-  // Service tiles (salon / appliance)
-  srvTile: {
-    width: 90,
-    marginRight: 12,
-    alignItems: 'center',
-  },
+  // Service tiles
+  srvTile: {width: 90, marginRight: 12, alignItems: 'center'},
   srvEmojiBox: {
     width: 64,
     height: 64,
@@ -678,7 +972,6 @@ const s = StyleSheet.create({
   },
   srvEmoji: {fontSize: 28},
   srvLabel: {fontSize: 12, fontWeight: '600', color: C.text, textAlign: 'center'},
-
   applianceEmojiBox: {
     width: 64,
     height: 64,
@@ -688,10 +981,8 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 6,
   },
-  bottomSpacer: {height: 88},
-  promoTextWrap: {marginLeft: 10},
 
-  // Professional card
+  // Professionals card
   proCard: {flexDirection: 'row', alignItems: 'center', backgroundColor: C.purpleL},
   proCardContent: {flex: 1},
   proTitle: {fontSize: 16, fontWeight: '800', color: C.purple, marginBottom: 6},
@@ -709,33 +1000,179 @@ const s = StyleSheet.create({
   proBadgeText: {fontSize: 11, fontWeight: '700', color: C.purple},
   proImg: {width: 88, height: 88, resizeMode: 'contain', marginLeft: 12},
 
-  // Sticky promo banner
-  promoBanner: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+  bottomSpacer: {height: 88},
+
+  // ── Search mode styles ───────────────────────────────────────────────────
+  searchScroll: {flex: 1},
+  searchScrollContent: {paddingBottom: 60},
+
+  voiceBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    backgroundColor: '#ede7ff',
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 4,
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#d4bbff',
+  },
+  voiceBannerIcon: {fontSize: 26, marginRight: 12},
+  voiceBannerTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: C.purple,
+    marginBottom: 4,
+  },
+  voiceBannerSub: {
+    fontSize: 11,
+    color: '#7c5cbf',
+    lineHeight: 16,
+  },
+
+  searchSection: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
+  searchSectionTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: C.sub,
+    letterSpacing: 0.8,
+    marginBottom: 10,
+    textTransform: 'uppercase',
+  },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: C.purpleL,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  chipPopular: {
+    backgroundColor: '#fff3e0',
+  },
+  chipEmoji: {fontSize: 13, marginRight: 5},
+  chipText: {fontSize: 13, fontWeight: '600', color: C.purple},
+
+  catRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  catTile: {
+    width: (width - 64) / 3,
+    backgroundColor: C.card,
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: C.border,
     ...Platform.select({
-      ios:     {shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 12, shadowOffset: {width: 0, height: -3}},
-      android: {elevation: 8},
+      ios: {
+        shadowColor: '#000',
+        shadowOpacity: 0.05,
+        shadowRadius: 6,
+        shadowOffset: {width: 0, height: 2},
+      },
+      android: {elevation: 2},
     }),
   },
-  promoLeft: {flexDirection: 'row', alignItems: 'center', flex: 1},
-  promoImg: {width: 44, height: 44, resizeMode: 'contain'},
-  promoTitle: {color: '#fff', fontWeight: '800', fontSize: 14},
-  promoTimer: {color: 'rgba(255,255,255,0.8)', fontSize: 12, marginTop: 2},
-  promoBuyBtn: {
-    backgroundColor: '#fff',
+  catEmoji: {fontSize: 26, marginBottom: 6},
+  catLabel: {fontSize: 12, fontWeight: '700', color: C.text, textAlign: 'center'},
+
+  resultsHeader: {
+    fontSize: 13,
+    color: C.sub,
+    fontWeight: '600',
     paddingHorizontal: 16,
-    paddingVertical: 9,
-    borderRadius: 10,
-    marginLeft: 12,
+    paddingTop: 12,
+    paddingBottom: 4,
   },
-  promoBuyText: {color: C.purple, fontWeight: '800', fontSize: 14},
-  speakerMargin: {marginLeft: 8},
+  resultRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: C.card,
+    marginHorizontal: 16,
+    marginTop: 8,
+    borderRadius: 16,
+    padding: 12,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+        shadowOffset: {width: 0, height: 2},
+      },
+      android: {elevation: 2},
+    }),
+  },
+  resultEmojiBox: {
+    width: 58,
+    height: 58,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  resultEmoji: {fontSize: 28},
+  resultInfo: {flex: 1, marginLeft: 12},
+  resultLabel: {fontSize: 15, fontWeight: '800', color: C.text},
+  resultDesc: {fontSize: 12, color: C.sub, marginTop: 2},
+  resultRating: {fontSize: 11, color: C.sub, marginTop: 4},
+  resultRight: {alignItems: 'flex-end', marginLeft: 8},
+  resultPrice: {fontSize: 14, fontWeight: '800', color: C.purple, marginBottom: 6},
+  resultBookBtn: {
+    backgroundColor: C.purple,
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+  },
+  resultBookText: {fontSize: 12, fontWeight: '700', color: '#fff'},
+
+  seeAllBtn: {
+    marginHorizontal: 16,
+    marginTop: 16,
+    paddingVertical: 14,
+    backgroundColor: C.card,
+    borderRadius: 14,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: C.purple,
+  },
+  seeAllText: {fontSize: 14, fontWeight: '700', color: C.purple},
+
+  noResults: {
+    alignItems: 'center',
+    paddingTop: 60,
+    paddingHorizontal: 32,
+  },
+  noResultsEmoji: {fontSize: 48, marginBottom: 12},
+  noResultsTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: C.text,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  noResultsSub: {
+    fontSize: 13,
+    color: C.sub,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  browsAllBtn: {
+    backgroundColor: C.purple,
+    borderRadius: 12,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+  },
+  browsAllText: {color: '#fff', fontWeight: '700', fontSize: 14},
 });

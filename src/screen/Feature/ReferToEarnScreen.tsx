@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Share } from 'react-native';
+import {View, Text, StyleSheet, StatusBar, TouchableOpacity, Share, Platform} from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { color } from '../../constant';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -23,7 +23,11 @@ const ReferToEarnScreen = ({navigation}) => {
 
   return (
     <View style={styles.container}>
-
+      <StatusBar
+        translucent
+        backgroundColor="transparent"
+        barStyle="light-content"
+      />
            <View style={styles.header}>
               <TouchableOpacity onPress={() => navigation.goBack()}>
                 <Icon name="arrow-left" size={24} color="#fff" />
@@ -31,8 +35,7 @@ const ReferToEarnScreen = ({navigation}) => {
               <Text style={styles.headerText}>{t.referAndEarn}</Text>
               <View style={{ width: 24 }} />
             </View>
-            <View style={{flex:1,padding:16,alignItems:'center',marginTop:60
-            }}>
+            <View style={{flex: 1, padding: 16, alignItems: 'center', marginTop: 0, backgroundColor: '#f4f3fb'}}>
       <View style={styles.card}>
         <Ionicons name="gift-outline" size={40} color={color.purple} />
         <Text style={styles.benefitText}>{t.referFriendsEarn}</Text>
@@ -60,11 +63,10 @@ const styles = StyleSheet.create({
           backgroundColor: color.purple,
           flexDirection: 'row',
           alignItems: 'center',
-          height:hp(10),
+          height: hp(10),
           padding: 12,
-          borderRadius: 10,
           justifyContent: 'space-between',
-          paddingTop: 20,
+          paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) + 8 : 44,
         },
         headerText: { color: '#fff', 
           fontSize: 20, fontWeight: '600' },
@@ -76,8 +78,7 @@ const styles = StyleSheet.create({
       },
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-  
+    backgroundColor: color.purple,
   },
   heading: {
     fontSize: 24,
