@@ -4,16 +4,20 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { color } from '../../constant';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { hp } from '../../component/utils/Constant';
+import {useLanguage} from '../../language/LanguageContext';
+import languageStrings from '../../language/languageStrings';
 const ReferToEarnScreen = ({navigation}) => {
   const referralCode = 'ROHAN1234';
+  const {lang} = useLanguage();
+  const t = languageStrings[lang];
 
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `Join this amazing app and get rewards! Use my code ${referralCode} while signing up. 🚀`,
+        message: `${t.shareMsg} ${referralCode} ${t.shareMsg2} 🚀`,
       });
     } catch (error) {
-      alert('Sharing failed. Please try again later.');
+      alert(t.sharingFailed);
     }
   };
 
@@ -24,17 +28,15 @@ const ReferToEarnScreen = ({navigation}) => {
               <TouchableOpacity onPress={() => navigation.goBack()}>
                 <Icon name="arrow-left" size={24} color="#fff" />
               </TouchableOpacity>
-              <Text style={styles.headerText}>Refer & Earn</Text>
+              <Text style={styles.headerText}>{t.referAndEarn}</Text>
               <View style={{ width: 24 }} />
             </View>
             <View style={{flex:1,padding:16,alignItems:'center',marginTop:60
             }}>
       <View style={styles.card}>
         <Ionicons name="gift-outline" size={40} color={color.purple} />
-        <Text style={styles.benefitText}>Refer your friends & earn ₹50</Text>
-        <Text style={styles.description}>
-          Get ₹50 in your wallet for every friend who signs up using your code.
-        </Text>
+        <Text style={styles.benefitText}>{t.referFriendsEarn}</Text>
+        <Text style={styles.description}>{t.referDesc}</Text>
 
         <View style={styles.codeBox}>
           <Text style={styles.codeText}>{referralCode}</Text>
@@ -42,7 +44,7 @@ const ReferToEarnScreen = ({navigation}) => {
 
         <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
           <Ionicons name="share-social-outline" size={20} color="#fff" />
-          <Text style={styles.shareText}>Share Your Code</Text>
+          <Text style={styles.shareText}>{t.shareCode}</Text>
         </TouchableOpacity>
       </View>
       </View>

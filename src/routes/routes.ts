@@ -28,6 +28,7 @@ import FeedbackScreen from "../screen/Feature/FeedbackScreen";
 import AllServicesScreen from "../screen/Feature/AllServicesScreen";
 import ServiceBookingScreen from "../screen/bookingflow/ServiceBookingScreen";
 import ArrivalChargesScreen from "../screen/bookingflow/ArrivalChargesScreen";
+import PoliciesScreen from "../screen/Feature/PoliciesScreen";
 import TabNavigator from "../navigators/TabNavigator";
 
 const _routes = {
@@ -57,6 +58,7 @@ const _routes = {
     { name: ScreenNameEnum.AllServicesScreen, Component: AllServicesScreen },
     { name: ScreenNameEnum.ServiceBookingScreen, Component: ServiceBookingScreen },
     { name: ScreenNameEnum.ArrivalChargesScreen, Component: ArrivalChargesScreen },
+    { name: ScreenNameEnum.PoliciesScreen, Component: PoliciesScreen },
   ],
 
   BOTTOM_TAB: [

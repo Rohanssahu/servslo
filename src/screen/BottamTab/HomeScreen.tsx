@@ -19,64 +19,13 @@ import ServiceBottomSheet, {
 } from '../Feature/ServiceBottomSheet';
 import {useIsFocused} from '@react-navigation/native';
 import SpeakerButton from '../../component/SpeakerButton';
+import {useLanguage} from '../../language/LanguageContext';
+import languageStrings from '../../language/languageStrings';
 
 const {width} = Dimensions.get('window');
 const BOOKED_W = 158;
 
-// ─── Static data (swap with API responses when ready) ───────────────────────
-
-const QUICK_SERVICES = [
-  {
-    label: 'Electrician',
-    emoji: '⚡',
-    desc: 'Wiring & repairs',
-    rating: '4.8',
-    basePrice: 199,
-  },
-  {
-    label: 'Plumber',
-    emoji: '🔧',
-    desc: 'Leaks, pipes, taps',
-    rating: '4.7',
-    basePrice: 149,
-  },
-  {
-    label: 'Cleaning',
-    emoji: '🧹',
-    desc: 'Full home clean',
-    rating: '4.9',
-    basePrice: 299,
-  },
-  {
-    label: 'AC Repair',
-    emoji: '❄️',
-    desc: 'Service & repair',
-    rating: '4.8',
-    basePrice: 349,
-  },
-  {
-    label: 'Carpenter',
-    emoji: '🪚',
-    desc: 'Furniture, doors',
-    rating: '4.6',
-    basePrice: 249,
-  },
-  {
-    label: 'Painting',
-    emoji: '🖌️',
-    desc: 'Interior & exterior',
-    rating: '4.7',
-    basePrice: 499,
-  },
-  {
-    label: 'Pest Control',
-    emoji: '🐛',
-    desc: 'All pest types',
-    rating: '4.8',
-    basePrice: 599,
-  },
-  {label: 'More', emoji: '➕', desc: '', rating: '4.8', basePrice: 0},
-];
+// ─── Static data (price/rating rows stay outside; label arrays move inside) ──
 
 const DEALS = [
   {time: '60 min', price: '₹149', old: '₹169', off: '11% OFF', label: 'Basic Clean'},
@@ -85,22 +34,9 @@ const DEALS = [
 ];
 
 const MOST_BOOKED = [
-  {title: 'Bathroom Deep Clean',    rating: '4.8', reviews: '2.8M', price: '₹519', emoji: '🚿'},
-  {title: '2 Bathroom Cleaning',    rating: '4.8', reviews: '2.8M', price: '₹950', oldPrice: '₹1,038', off: '8% OFF', emoji: '🏠'},
-  {title: 'Washing Machine Clean',  rating: '4.8', reviews: '319K', price: '₹160', emoji: '🫧'},
-];
-
-const SALON_ITEMS = [
-  {label: 'Waxing', emoji: '✨'},
-  {label: 'Facial', emoji: '💆'},
-  {label: 'Manicure', emoji: '💅'},
-  {label: 'Pedicure', emoji: '🦶'},
-];
-const APPLIANCE_ITEMS = [
-  {label: 'AC Service', emoji: '❄️'},
-  {label: 'Washing Machine', emoji: '🫧'},
-  {label: 'Water Purifier', emoji: '💧'},
-  {label: 'Fridge Repair', emoji: '🧊'},
+  {title: 'Bathroom Deep Clean',   rating: '4.8', reviews: '2.8M', price: '₹519', emoji: '🚿'},
+  {title: '2 Bathroom Cleaning',   rating: '4.8', reviews: '2.8M', price: '₹950', oldPrice: '₹1,038', off: '8% OFF', emoji: '🏠'},
+  {title: 'Washing Machine Clean', rating: '4.8', reviews: '319K', price: '₹160', emoji: '🫧'},
 ];
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -114,6 +50,85 @@ export default function HomeScreen({navigation}: {navigation: any}) {
   const sheetRef = useRef<ServiceBottomSheetRef>(null);
   const [searchText, setSearchText] = useState('');
   const isFocus = useIsFocused();
+  const {lang} = useLanguage();
+  const t = languageStrings[lang];
+
+  // ── Translated data arrays (depend on `t`) ───────────────────────────────
+  const QUICK_SERVICES = [
+    {
+      label: t.electrician,
+      emoji: '⚡',
+      desc: t.wiringRepairs,
+      rating: '4.8',
+      basePrice: 199,
+    },
+    {
+      label: t.plumber,
+      emoji: '🔧',
+      desc: t.leaksPipesTaps,
+      rating: '4.7',
+      basePrice: 149,
+    },
+    {
+      label: t.cleaning,
+      emoji: '🧹',
+      desc: t.fullHomeClean,
+      rating: '4.9',
+      basePrice: 299,
+    },
+    {
+      label: t.acRepair,
+      emoji: '❄️',
+      desc: t.serviceRepair,
+      rating: '4.8',
+      basePrice: 349,
+    },
+    {
+      label: t.carpenter,
+      emoji: '🪚',
+      desc: t.furnitureDoors,
+      rating: '4.6',
+      basePrice: 249,
+    },
+    {
+      label: t.painting,
+      emoji: '🖌️',
+      desc: t.interiorExterior,
+      rating: '4.7',
+      basePrice: 499,
+    },
+    {
+      label: t.pestControl,
+      emoji: '🐛',
+      desc: t.allPestTypes,
+      rating: '4.8',
+      basePrice: 599,
+    },
+    {label: t.more, emoji: '➕', desc: '', rating: '4.8', basePrice: 0},
+  ];
+  const SALON_ITEMS = [
+    {label: t.waxing, emoji: '✨'},
+    {label: t.facial, emoji: '💆'},
+    {label: t.manicure, emoji: '💅'},
+    {label: t.pedicure, emoji: '🦶'},
+  ];
+  const APPLIANCE_ITEMS = [
+    {label: t.acService, emoji: '❄️'},
+    {label: t.washingMachine, emoji: '🫧'},
+    {label: t.waterPurifier, emoji: '💧'},
+    {label: t.fridgeRepair, emoji: '🧊'},
+  ];
+  const SMALL_TILES = [
+    {label: t.laundry, emoji: '👕'},
+    {label: t.dishwashing, emoji: '🍽️'},
+    {label: t.bathroom, emoji: '🚿'},
+    {label: t.kitchen, emoji: '🍳'},
+  ];
+  const TRUST_ITEMS = [
+    {icon: '⚡', text: t.trustResponse},
+    {icon: '✅', text: t.trustVerified},
+    {icon: '🏠', text: t.trustFamilies},
+  ];
 
   useEffect(() => {
     sheetRef.current?.close();
@@ -125,11 +140,7 @@ export default function HomeScreen({navigation}: {navigation: any}) {
 
   return (
     <SafeAreaView style={s.safe}>
-      <StatusBar
-        translucent
-        backgroundColor="transparent"
-        barStyle="light-content"
-      />
+      <StatusBar translucent backgroundColor="transparent" />
 
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <LinearGradient
@@ -141,29 +152,16 @@ export default function HomeScreen({navigation}: {navigation: any}) {
           style={s.addressBlock}
           onPress={() => navigation.navigate(ScreenNameEnum.AddressesScreen)}
           activeOpacity={0.8}>
-          <Text style={s.addressLabel}>Welcome back 👋</Text>
+          <Text style={s.addressLabel}>{t.welcomeBack}</Text>
           <View style={s.addressRow}>
             <Text style={s.addressPin}>📍 </Text>
             <Text style={s.addressText} numberOfLines={1}>
               Mulund Road, Mumbai...
             </Text>
-            <Text style={s.chevron}>▾</Text>
           </View>
         </TouchableOpacity>
 
         <View style={s.headerRight}>
-          <TouchableOpacity
-            style={s.headerPill}
-            onPress={() => navigation.navigate(ScreenNameEnum.ReferralScreen)}
-            activeOpacity={0.8}>
-            <Text style={s.headerPillText}>🎁 ₹50</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[s.headerPill, s.walletPill]}
-            onPress={() => navigation.navigate(ScreenNameEnum.WalletScreen)}
-            activeOpacity={0.8}>
-            <Text style={s.walletText}>💰 ₹0</Text>
-          </TouchableOpacity>
           <TouchableOpacity
             style={s.bellBtn}
             onPress={() => navigation.navigate(ScreenNameEnum.NotificationList)}
@@ -185,12 +183,12 @@ export default function HomeScreen({navigation}: {navigation: any}) {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled">
 
-        {/* Search ──────────────────────────────────────────────────────── */}
+        {/* Search */}
         <View style={s.searchBox}>
           <Text style={s.searchIcon}>🔍</Text>
           <TextInput
             style={s.searchInput}
-            placeholder="Search plumber, cleaning, AC repair..."
+            placeholder={t.searchPlaceholder}
             placeholderTextColor="#aaa"
             value={searchText}
             onChangeText={setSearchText}
@@ -204,53 +202,36 @@ export default function HomeScreen({navigation}: {navigation: any}) {
           )}
         </View>
 
-        {/* Trust Strip ─────────────────────────────────────────────────── */}
+        {/* Trust Strip */}
         <View style={s.trustStrip}>
-          {[
-            {icon: '⚡', text: '10-min Response'},
-            {icon: '✅', text: 'Verified Pros'},
-            {icon: '🏠', text: '50K+ Families'},
-          ].map((t, i) => (
+          {TRUST_ITEMS.map((item, i) => (
             <View key={i} style={s.trustItem}>
-              <Text style={s.trustEmoji}>{t.icon}</Text>
-              <Text style={s.trustText}>{t.text}</Text>
+              <Text style={s.trustEmoji}>{item.icon}</Text>
+              <Text style={s.trustText}>{item.text}</Text>
             </View>
           ))}
         </View>
 
-        {/* What do you need? ───────────────────────────────────────────── */}
+        {/* What do you need? */}
         <View style={s.card}>
           <View style={s.cardTitleRow}>
-            <Text style={s.cardTitle}>What do you need?</Text>
+            <Text style={s.cardTitle}>{t.whatDoYouNeed}</Text>
             <TouchableOpacity
               activeOpacity={0.7}
-              onPress={() =>
-                navigation.navigate(ScreenNameEnum.AllServicesScreen, {
-                  category: 'all',
-                  title: 'All Services',
-                })
-              }>
-              <Text style={s.seeAll}>See all →</Text>
+              onPress={() => navigation.navigate(ScreenNameEnum.AllServicesScreen, {category: 'all', title: 'All Services'})}>
+              <Text style={s.seeAll}>{t.seeAll}</Text>
             </TouchableOpacity>
           </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={s.storyList}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.storyList}>
             {QUICK_SERVICES.map((item, i) => (
               <TouchableOpacity
                 key={i}
                 style={s.storyItem}
                 onPress={() => {
-                  if (item.label === 'More') {
-                    navigation.navigate(ScreenNameEnum.AllServicesScreen, {
-                      category: 'all',
-                      title: 'All Services',
-                    });
+                  if (item.basePrice === 0) {
+                    navigation.navigate(ScreenNameEnum.AllServicesScreen, {category: 'all', title: 'All Services'});
                   } else {
-                    navigation.navigate(ScreenNameEnum.ServiceBookingScreen, {
-                      service: item,
-                    });
+                    navigation.navigate(ScreenNameEnum.ServiceBookingScreen, {service: item});
                   }
                 }}
                 activeOpacity={0.8}>
@@ -263,27 +244,22 @@ export default function HomeScreen({navigation}: {navigation: any}) {
                     <Text style={s.storyEmoji}>{item.emoji}</Text>
                   </View>
                 </LinearGradient>
-                <Text style={s.storyLabel} numberOfLines={2}>
-                  {item.label}
-                </Text>
+                <Text style={s.storyLabel} numberOfLines={2}>{item.label}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
         </View>
 
-        {/* Quick Cleaning Packages ─────────────────────────────────────── */}
+        {/* Quick Cleaning Packages */}
         <View style={s.card}>
           <View style={s.cardTitleRow}>
-            <Text style={s.cardTitle}>Quick Cleaning</Text>
+            <Text style={s.cardTitle}>{t.quickCleaning}</Text>
             <View style={s.livePill}>
-              <Text style={s.livePillText}>⚡ LIVE</Text>
+              <Text style={s.livePillText}>{t.livePill}</Text>
             </View>
           </View>
-          <Text style={s.cardSub}>Arrives in 10 min · Book instantly</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={s.hPad}>
+          <Text style={s.cardSub}>{t.arrivesIn10Min}</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.hPad}>
             {DEALS.map((d, i) => (
               <View key={i} style={s.dealCard}>
                 <View style={s.dealBadge}>
@@ -295,36 +271,25 @@ export default function HomeScreen({navigation}: {navigation: any}) {
                   <Text style={s.dealPrice}>{d.price}</Text>
                   <Text style={s.dealOld}>{d.old}</Text>
                 </View>
-                <TouchableOpacity
-                  style={s.bookBtnFill}
-                  onPress={() => sheetRef.current?.open()}
-                  activeOpacity={0.8}>
-                  <Text style={s.bookBtnFillText}>Book Now</Text>
+                <TouchableOpacity style={s.bookBtnFill} onPress={() => sheetRef.current?.open()} activeOpacity={0.8}>
+                  <Text style={s.bookBtnFillText}>{t.bookNow}</Text>
                 </TouchableOpacity>
               </View>
             ))}
           </ScrollView>
         </View>
 
-        {/* Most Booked ─────────────────────────────────────────────────── */}
+        {/* Most Booked */}
         <View style={s.card}>
           <View style={s.cardTitleRow}>
-            <Text style={s.cardTitle}>Most Booked</Text>
+            <Text style={s.cardTitle}>{t.mostBooked}</Text>
             <TouchableOpacity
               activeOpacity={0.7}
-              onPress={() =>
-                navigation.navigate(ScreenNameEnum.AllServicesScreen, {
-                  category: 'cleaning',
-                  title: 'Most Booked',
-                })
-              }>
-              <Text style={s.seeAll}>See all →</Text>
+              onPress={() => navigation.navigate(ScreenNameEnum.AllServicesScreen, {category: 'cleaning', title: 'Most Booked'})}>
+              <Text style={s.seeAll}>{t.seeAll}</Text>
             </TouchableOpacity>
           </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={s.hPad}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.hPad}>
             {MOST_BOOKED.map((item, i) => (
               <TouchableOpacity
                 key={i}
@@ -344,9 +309,7 @@ export default function HomeScreen({navigation}: {navigation: any}) {
                 <View style={s.bookedFooter}>
                   <View>
                     <Text style={s.bookedPrice}>{item.price}</Text>
-                    {item.oldPrice && (
-                      <Text style={s.bookedOldPrice}>{item.oldPrice}</Text>
-                    )}
+                    {item.oldPrice && <Text style={s.bookedOldPrice}>{item.oldPrice}</Text>}
                   </View>
                   <View style={s.addBtn}>
                     <Text style={s.addBtnText}>+</Text>
@@ -357,35 +320,22 @@ export default function HomeScreen({navigation}: {navigation: any}) {
           </ScrollView>
         </View>
 
-        {/* Our Services ───────────────────────────────────────────────── */}
+        {/* Our Services */}
         <View style={s.card}>
-          <Text style={s.cardTitle}>Our Services</Text>
-          <Text style={s.cardSub}>Multiple services in one booking</Text>
-
+          <Text style={s.cardTitle}>{t.ourServices}</Text>
+          <Text style={s.cardSub}>{t.multipleServices}</Text>
           <View style={s.bigRow}>
             <TouchableOpacity style={s.bigTile} activeOpacity={0.8}>
-              <Text style={s.bigTileText}>Everyday{'\n'}Cleaning</Text>
-              <Image
-                source={require('../../assets/images/mop.png')}
-                style={s.bigTileImg}
-              />
+              <Text style={s.bigTileText}>{t.everydayCleaning}</Text>
+              <Image source={require('../../assets/images/mop.png')} style={s.bigTileImg} />
             </TouchableOpacity>
             <TouchableOpacity style={s.bigTile} activeOpacity={0.8}>
-              <Text style={s.bigTileText}>Weekly{'\n'}Cleaning</Text>
-              <Image
-                source={require('../../assets/images/cleaning.jpg')}
-                style={s.bigTileImg}
-              />
+              <Text style={s.bigTileText}>{t.weeklyCleaning}</Text>
+              <Image source={require('../../assets/images/cleaning.jpg')} style={s.bigTileImg} />
             </TouchableOpacity>
           </View>
-
           <View style={s.smallRow}>
-            {[
-              {label: 'Laundry', emoji: '👕'},
-              {label: 'Dishwashing', emoji: '🍽️'},
-              {label: 'Bathroom', emoji: '🚿'},
-              {label: 'Kitchen', emoji: '🍳'},
-            ].map((item, i) => (
+            {SMALL_TILES.map((item, i) => (
               <TouchableOpacity key={i} style={s.smallTile} activeOpacity={0.75}>
                 <Text style={s.smallTileEmoji}>{item.emoji}</Text>
                 <Text style={s.smallTileLabel}>{item.label}</Text>
@@ -394,24 +344,17 @@ export default function HomeScreen({navigation}: {navigation: any}) {
           </View>
         </View>
 
-        {/* Salon for Women ────────────────────────────────────────────── */}
+        {/* Salon for Women */}
         <View style={s.card}>
           <View style={s.cardTitleRow}>
-            <Text style={s.cardTitle}>Salon for Women</Text>
+            <Text style={s.cardTitle}>{t.salonForWomen}</Text>
             <TouchableOpacity activeOpacity={0.7}>
-              <Text style={s.seeAll}>See all →</Text>
+              <Text style={s.seeAll}>{t.seeAll}</Text>
             </TouchableOpacity>
           </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={s.hPad}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.hPad}>
             {SALON_ITEMS.map((srv, i) => (
-              <TouchableOpacity
-                key={i}
-                style={s.srvTile}
-                onPress={() => sheetRef.current?.open()}
-                activeOpacity={0.8}>
+              <TouchableOpacity key={i} style={s.srvTile} onPress={() => sheetRef.current?.open()} activeOpacity={0.8}>
                 <View style={s.srvEmojiBox}>
                   <Text style={s.srvEmoji}>{srv.emoji}</Text>
                 </View>
@@ -421,24 +364,17 @@ export default function HomeScreen({navigation}: {navigation: any}) {
           </ScrollView>
         </View>
 
-        {/* Appliance Repair ───────────────────────────────────────────── */}
+        {/* Appliance Repair */}
         <View style={s.card}>
           <View style={s.cardTitleRow}>
-            <Text style={s.cardTitle}>Appliance Repair</Text>
+            <Text style={s.cardTitle}>{t.applianceRepair}</Text>
             <TouchableOpacity activeOpacity={0.7}>
-              <Text style={s.seeAll}>See all →</Text>
+              <Text style={s.seeAll}>{t.seeAll}</Text>
             </TouchableOpacity>
           </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={s.hPad}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.hPad}>
             {APPLIANCE_ITEMS.map((srv, i) => (
-              <TouchableOpacity
-                key={i}
-                style={s.srvTile}
-                onPress={() => sheetRef.current?.open()}
-                activeOpacity={0.8}>
+              <TouchableOpacity key={i} style={s.srvTile} onPress={() => sheetRef.current?.open()} activeOpacity={0.8}>
                 <View style={s.applianceEmojiBox}>
                   <Text style={s.srvEmoji}>{srv.emoji}</Text>
                 </View>
@@ -448,56 +384,27 @@ export default function HomeScreen({navigation}: {navigation: any}) {
           </ScrollView>
         </View>
 
-        {/* Trust / Professional Card ──────────────────────────────────── */}
+        {/* Trained Professionals */}
         <View style={[s.card, s.proCard]}>
           <View style={s.proCardContent}>
-            <Text style={s.proTitle}>Trained Professionals</Text>
-            <Text style={s.proDesc}>
-              Background-verified experts with the best tools and practices
-            </Text>
+            <Text style={s.proTitle}>{t.trainedProfessionals}</Text>
+            <Text style={s.proDesc}>{t.backgroundVerified}</Text>
             <View style={s.proBadgeRow}>
               <View style={s.proBadge}>
-                <Text style={s.proBadgeText}>✓ Verified</Text>
+                <Text style={s.proBadgeText}>{t.verified}</Text>
               </View>
               <View style={s.proBadge}>
-                <Text style={s.proBadgeText}>✓ Insured</Text>
+                <Text style={s.proBadgeText}>{t.insured}</Text>
               </View>
             </View>
           </View>
-          <Image
-            source={require('../../assets/images/glove.jpg')}
-            style={s.proImg}
-          />
+          <Image source={require('../../assets/images/glove.jpg')} style={s.proImg} />
         </View>
 
         <View style={s.bottomSpacer} />
       </ScrollView>
 
-      {/* ── Sticky Promo Banner ─────────────────────────────────────────── */}
-      <LinearGradient
-        colors={['#6E39F7', '#8E57FF', '#B78CFF']}
-        start={{x: 0.1, y: 0}}
-        end={{x: 1, y: 1}}
-        style={s.promoBanner}>
-        <View style={s.promoLeft}>
-          <Image
-            source={require('../../assets/images/glove.jpg')}
-            style={s.promoImg}
-          />
-          <View style={s.promoTextWrap}>
-            <Text style={s.promoTitle}>STARTER PACK</Text>
-            <Text style={s.promoTimer}>⏰ Ends in 14h 43m</Text>
-          </View>
-        </View>
-        <TouchableOpacity style={s.promoBuyBtn} activeOpacity={0.8}>
-          <Text style={s.promoBuyText}>Buy ₹149</Text>
-        </TouchableOpacity>
-      </LinearGradient>
-
-      <ServiceBottomSheet
-        ref={sheetRef}
-        onClose={() => console.log('Sheet closed')}
-      />
+      <ServiceBottomSheet ref={sheetRef} onClose={() => console.log('Sheet closed')} />
     </SafeAreaView>
   );
 }
@@ -523,14 +430,13 @@ const s = StyleSheet.create({
   // Header
   header: {
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) + 14 : 14,
-    paddingBottom: 16,
+    paddingVertical: 16,
     flexDirection: 'row',
     alignItems: 'center',
   },
   addressBlock: {flex: 1},
-  addressLabel: {color: 'rgba(255,255,255,0.75)', fontSize: 11, fontWeight: '500', marginBottom: 2},
-  addressRow: {flexDirection: 'row', alignItems: 'center'},
+  addressLabel: {color: '#fff', fontSize: 20, fontWeight: '500', marginBottom: 2},
+  addressRow: {flexDirection: 'row', alignItems: 'center',marginLeft:-5},
   addressPin: {color: 'rgba(255,255,255,0.85)', fontSize: 13},
   addressText: {color: '#fff', fontWeight: '700', fontSize: 14, flex: 1},
   chevron: {color: '#fff', fontSize: 16, marginLeft: 4},

@@ -9,20 +9,20 @@ import ScreenNameEnum from '../../routes/screenName.enum';
 import HeaderComponent from '../Feature/HeaderComponent';
 
 export default function ProfileSettingsScreen({ navigation }) {
-  const { language, setLanguage } = useLanguage();
-  const strings = languageStrings[language];
+  const {lang, toggleLang} = useLanguage();
+  const t = languageStrings[lang];
 
   const handleLogout = () => {
-    Alert.alert('लॉग आउट', 'क्या आप वाकई लॉग आउट करना चाहते हैं?', [
-      { text: 'नहीं' },
-      { text: 'हाँ', onPress: () => { navigation.navigate(ScreenNameEnum.PhoneLogin) } },
+    Alert.alert(t.logoutTitle, t.logoutConfirm, [
+      {text: t.no},
+      {text: t.yes, onPress: () => navigation.navigate(ScreenNameEnum.PhoneLogin)},
     ]);
   };
 
   const handleDeleteData = () => {
-    Alert.alert('डेटा डिलीट करें', 'क्या आप वाकई अपना डेटा डिलीट करना चाहते हैं?', [
-      { text: 'नहीं' },
-      { text: 'हाँ', onPress: () => console.log('Data Deleted') },
+    Alert.alert(t.deleteDataTitle, t.deleteDataConfirm, [
+      {text: t.no},
+      {text: t.yes, onPress: () => console.log('Data Deleted')},
     ]);
   };
 
@@ -30,8 +30,8 @@ export default function ProfileSettingsScreen({ navigation }) {
     <ScrollView style={styles.container}>
       {/* Header */}
       <HeaderComponent
-        language={language}
-        setLanguage={setLanguage}
+        language={lang}
+        setLanguage={toggleLang}
         location="Indore, MP"
         notificationCount={5}
         onNotificationPress={() => console.log('Notification clicked')}
@@ -40,62 +40,60 @@ export default function ProfileSettingsScreen({ navigation }) {
       {/* Referral Banner */}
       <TouchableOpacity
         style={styles.referralCard}
-        onPress={() => navigation.navigate(ScreenNameEnum.ReferToEarnScreen)}
-      >
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        onPress={() => navigation.navigate(ScreenNameEnum.ReferToEarnScreen)}>
+        <View style={{flexDirection: 'row', alignItems: 'center'}}>
           <Icon name="gift" size={22} color="#E91E63" />
-          <Text style={styles.referralText}> Earn ₹50 for every referral</Text>
+          <Text style={styles.referralText}> {t.earnReferral}</Text>
         </View>
-        <Text style={styles.referralBtn}>Refer now</Text>
+        <Text style={styles.referralBtn}>{t.referNow}</Text>
       </TouchableOpacity>
 
       {/* Menu List */}
       <View style={styles.settingsBox}>
         <SettingsItem
           icon="person-outline"
-          label="Profile"
-          subLabel="Update personal information"
-          onPress={() => navigation.navigate(ScreenNameEnum.UserInfoForm, { profile: true })}
+          label={t.profileMenu}
+          subLabel={t.profileSub}
+          onPress={() => navigation.navigate(ScreenNameEnum.UserInfoForm, {profile: true})}
         />
-  
         <SettingsItem
           icon="home-outline"
-          label="Addresses"
-          subLabel="Manage saved addresses"
+          label={t.addressesMenu}
+          subLabel={t.addressesSub}
           onPress={() => navigation.navigate(ScreenNameEnum.AddressesScreen)}
         />
-               <SettingsItem
+        <SettingsItem
           icon="play-circle-outline"
-          label="ऐप का उपयोग कैसे करें (वीडियो)"
-          subLabel="How to use app"
+          label={t.howToUseMenu}
+          subLabel={t.howToUseSub}
           onPress={() => navigation.navigate(ScreenNameEnum.HowToUseScreen)}
         />
         <SettingsItem
           icon="document-text-outline"
-          label="Policies"
-          subLabel="Terms of use, Privacy policy and others"
-          onPress={() => console.log('Policies')}
+          label={t.policiesMenu}
+          subLabel={t.policiesSub}
+          onPress={() => navigation.navigate(ScreenNameEnum.PoliciesScreen)}
         />
         <SettingsItem
           icon="chatbubble-ellipses-outline"
-          label="Help & support"
-          subLabel="Reach out to us in case you have a question"
-          onPress={() => console.log('Help')}
+          label={t.helpMenu}
+          subLabel={t.helpSub}
+          onPress={() => navigation.navigate(ScreenNameEnum.HelpSupportScreen)}
         />
       </View>
 
       {/* Logout */}
       <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-        <Text style={styles.logoutText}>Log out</Text>
+        <Text style={styles.logoutText}>{t.logout}</Text>
       </TouchableOpacity>
 
       {/* Delete Data */}
       <TouchableOpacity style={styles.deleteBtn} onPress={handleDeleteData}>
-        <Text style={styles.deleteText}>Delete my data</Text>
+        <Text style={styles.deleteText}>{t.deleteData}</Text>
       </TouchableOpacity>
 
       {/* Version */}
-      <Text style={styles.versionText}>App version 1.0.43</Text>
+      <Text style={styles.versionText}>{t.version} 1.0.43</Text>
     </ScrollView>
   );
 }

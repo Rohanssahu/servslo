@@ -13,6 +13,8 @@ import {
   KeyboardAvoidingView,
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
+import {useLanguage} from '../../language/LanguageContext';
+import languageStrings from '../../language/languageStrings';
 
 const colors = {
   bg: "#f6f5fb",
@@ -27,6 +29,8 @@ const colors = {
 export default function WalletScreen({navigation}) {
   const [amount, setAmount] = useState<string>("1000");
   const [activeTab, setActiveTab] = useState<"all" | "add" | "deduct">("all");
+  const {lang} = useLanguage();
+  const t = languageStrings[lang];
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -48,7 +52,7 @@ export default function WalletScreen({navigation}) {
             style={styles.backBtn}>
               <Ionicons name="chevron-back" size={22} color={colors.purple} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Help & Support</Text>
+            <Text style={styles.headerTitle}>{t.walletTitle}</Text>
           
           </View>
 
@@ -60,12 +64,12 @@ export default function WalletScreen({navigation}) {
               </View>
               <View style={{ marginLeft: 12 }}>
                 <Text style={styles.refTitle}>
-                  Earn <Text style={styles.rupee}>₹50</Text> for every referral
+                  {t.earnReferral}
                 </Text>
               </View>
             </View>
             <View style={styles.refBtn}>
-              <Text style={styles.refBtnText}>Refer now</Text>
+              <Text style={styles.refBtnText}>{t.referNow}</Text>
             </View>
           </TouchableOpacity>
 
@@ -78,7 +82,7 @@ export default function WalletScreen({navigation}) {
                 // replace with your wallet image
               /> */}
               <View style={{ flex: 1, alignItems: "center" }}>
-                <Text style={styles.walletLabel}>Wallet Balance</Text>
+                <Text style={styles.walletLabel}>{t.walletBalance}</Text>
                 <Text style={styles.walletAmount}>₹0</Text>
               </View>
               <View style={{ width: 40 }} />
@@ -88,11 +92,11 @@ export default function WalletScreen({navigation}) {
 
             <View style={styles.splitRow}>
               <View style={styles.splitItem}>
-                <Text style={styles.splitLabel}>Cash</Text>
+                <Text style={styles.splitLabel}>{t.walletCash}</Text>
                 <Text style={styles.splitAmount}>₹0</Text>
               </View>
               <View style={styles.splitItem}>
-                <Text style={styles.splitLabel}>Bonus</Text>
+                <Text style={styles.splitLabel}>{t.walletBonus}</Text>
                 <Text style={styles.splitAmount}>₹0</Text>
               </View>
             </View>
@@ -100,7 +104,7 @@ export default function WalletScreen({navigation}) {
 
           {/* Add money block */}
           <View style={styles.card}>
-            <Text style={styles.addTitle}>Add money to Wallet</Text>
+            <Text style={styles.addTitle}>{t.addMoneyTitle}</Text>
 
             <View style={styles.inputBox}>
               <Text style={styles.inputSymbol}>₹</Text>
@@ -115,12 +119,12 @@ export default function WalletScreen({navigation}) {
             </View>
 
             <TouchableOpacity style={styles.couponRow}>
-              <Text style={styles.couponText}>Have a coupon code?</Text>
+              <Text style={styles.couponText}>{t.couponCode}</Text>
               <Ionicons name="chevron-forward" size={18} color={colors.accent} />
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.proceedBtn}>
-              <Text style={styles.proceedText}>Proceed to pay</Text>
+              <Text style={styles.proceedText}>{t.proceedToPay}</Text>
             </TouchableOpacity>
           </View>
 
@@ -135,7 +139,7 @@ export default function WalletScreen({navigation}) {
                 ]}
               >
                 <Text style={[styles.pillText, activeTab === "all" && styles.pillTextActive]}>
-                  All transactions
+                  {t.allTransactions}
                 </Text>
               </TouchableOpacity>
 
@@ -144,7 +148,7 @@ export default function WalletScreen({navigation}) {
                 style={[styles.pill, activeTab === "add" && styles.pillActive, { marginLeft: 8 }]}
               >
                 <Text style={[styles.pillText, activeTab === "add" && styles.pillTextActive]}>
-                  Addition
+                  {t.addition}
                 </Text>
               </TouchableOpacity>
 
@@ -153,13 +157,13 @@ export default function WalletScreen({navigation}) {
                 style={[styles.pill, activeTab === "deduct" && styles.pillActive, { marginLeft: 8 }]}
               >
                 <Text style={[styles.pillText, activeTab === "deduct" && styles.pillTextActive]}>
-                  Deduction
+                  {t.deduction}
                 </Text>
               </TouchableOpacity>
             </View>
 
             <View style={styles.emptyState}>
-              <Text style={styles.emptyText}>No transactions in this category</Text>
+              <Text style={styles.emptyText}>{t.noTransactions}</Text>
             </View>
           </View>
 

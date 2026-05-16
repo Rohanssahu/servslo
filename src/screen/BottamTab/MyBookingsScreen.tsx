@@ -13,6 +13,8 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import ScreenNameEnum from '../../routes/screenName.enum';
+import {useLanguage} from '../../language/LanguageContext';
+import languageStrings from '../../language/languageStrings';
 
 const C = {
   purple: '#6E39F7',
@@ -28,11 +30,7 @@ const C = {
   red: '#EF4444',
 };
 
-const TABS = [
-  {key: 'active', label: 'चालू', icon: 'time-outline'},
-  {key: 'completed', label: 'पूर्ण', icon: 'checkmark-circle-outline'},
-  {key: 'cancelled', label: 'रद्द', icon: 'close-circle-outline'},
-];
+// TABS built inside component to use translations
 
 const ALL_BOOKINGS = [
   {
@@ -102,14 +100,7 @@ const ALL_BOOKINGS = [
   },
 ];
 
-const STEP_LABELS: Record<string, string> = {
-  ASSIGNED: 'Partner Assigned',
-  EN_ROUTE: 'On the Way',
-  ARRIVED: 'Partner Arrived',
-  IN_PROGRESS: 'Service in Progress',
-  COMPLETED: 'Completed',
-  CANCELLED: 'Cancelled',
-};
+// STEP_LABELS built inside component to use translations
 
 const STATUS_COLOR: Record<string, string> = {
   active: C.orange,
@@ -154,6 +145,23 @@ type Props = {navigation: any};
 
 export default function MyBookingsScreen({navigation}: Props) {
   const [activeTab, setActiveTab] = useState('active');
+  const {lang} = useLanguage();
+  const t = languageStrings[lang];
+
+  const TABS = [
+    {key: 'active', label: t.activeTab, icon: 'time-outline'},
+    {key: 'completed', label: t.completedTab, icon: 'checkmark-circle-outline'},
+    {key: 'cancelled', label: t.cancelledTab, icon: 'close-circle-outline'},
+  ];
+
+  const STEP_LABELS: Record<string, string> = {
+    ASSIGNED: t.stepAssigned,
+    EN_ROUTE: t.stepEnRoute,
+    ARRIVED: t.stepArrived,
+    IN_PROGRESS: t.stepInProgress,
+    COMPLETED: t.stepCompleted,
+    CANCELLED: t.stepCancelled,
+  };
 
   const filtered = ALL_BOOKINGS.filter(b => b.status === activeTab);
 
@@ -164,12 +172,12 @@ export default function MyBookingsScreen({navigation}: Props) {
       </Text>
       <Text style={s.emptyTitle}>
         {activeTab === 'active'
-          ? 'कोई चालू बुकिंग नहीं'
+          ? t.noActiveBookings
           : activeTab === 'completed'
-          ? 'कोई पूर्ण बुकिंग नहीं'
-          : 'कोई रद्द बुकिंग नहीं'}
+          ? t.noCompletedBookings
+          : t.noCancelledBookings}
       </Text>
-      <Text style={s.emptySub}>New service book करने के लिए Home पर जाएं</Text>
+      <Text style={s.emptySub}>{t.goToHomeMsg}</Text>
     </View>
   );
 
@@ -229,7 +237,7 @@ export default function MyBookingsScreen({navigation}: Props) {
         {/* Bottom row: amount + action */}
         <View style={s.cardBottom}>
           <View>
-            <Text style={s.amtLabel}>Total Paid</Text>
+            <Text style={s.amtLabel}>{t.totalPaid}</Text>
             <Text style={s.amtVal}>₹{item.amount}</Text>
           </View>
 
@@ -244,7 +252,7 @@ export default function MyBookingsScreen({navigation}: Props) {
               }>
               <LinearGradient colors={C.grad} style={s.trackGrad}>
                 <Ionicons name="navigate" size={14} color="#fff" />
-                <Text style={s.trackText}>Track</Text>
+                <Text style={s.trackText}>{t.track}</Text>
               </LinearGradient>
             </TouchableOpacity>
           ) : item.status === 'completed' ? (
@@ -258,16 +266,14 @@ export default function MyBookingsScreen({navigation}: Props) {
                   })
                 }>
                 <Ionicons name="receipt-outline" size={14} color={C.purple} />
-                <Text style={s.outlineBtnText}>Invoice</Text>
+                <Text style={s.outlineBtnText}>{t.invoice}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={s.outlineBtn}
                 activeOpacity={0.8}
-                onPress={() =>
-                  navigation.navigate(ScreenNameEnum.AllServicesScreen)
-                }>
+                onPress={() => navigation.navigate(ScreenNameEnum.AllServicesScreen)}>
                 <Ionicons name="repeat" size={14} color={C.purple} />
-                <Text style={s.outlineBtnText}>फिर बुक करें</Text>
+                <Text style={s.outlineBtnText}>{t.bookAgain}</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -276,7 +282,7 @@ export default function MyBookingsScreen({navigation}: Props) {
               activeOpacity={0.8}
               onPress={() => navigation.navigate(ScreenNameEnum.AllServicesScreen)}>
               <Ionicons name="add-circle-outline" size={14} color={C.purple} />
-              <Text style={s.outlineBtnText}>New Book</Text>
+              <Text style={s.outlineBtnText}>{t.newBook}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -295,8 +301,8 @@ export default function MyBookingsScreen({navigation}: Props) {
         end={{x: 1, y: 1}}
         style={s.header}>
         <View>
-          <Text style={s.headerTitle}>मेरी बुकिंग्स</Text>
-          <Text style={s.headerSub}>सभी service bookings</Text>
+          <Text style={s.headerTitle}>{t.myBookings}</Text>
+          <Text style={s.headerSub}>{t.allServiceBookings}</Text>
         </View>
         <TouchableOpacity
           style={s.bellBtn}
