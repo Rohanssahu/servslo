@@ -165,7 +165,6 @@ export default function WalkthroughOverlay({
   const hasSpotlight = !!spotlightRect && !!step;
   const title = step ? (lang === 'hi' ? step.titleHi : step.title) : '';
   const desc = step ? (lang === 'hi' ? step.descriptionHi : step.description) : '';
-  const stepLabel = `${stepIndex + 1} / ${totalSteps}`;
   const progress = (stepIndex + 1) / totalSteps;
 
   // ── Spotlight geometry ────────────────────────────────────────────────────
@@ -336,10 +335,19 @@ export default function WalkthroughOverlay({
                 start={{x: 0, y: 0}}
                 end={{x: 1, y: 1}}
                 style={s.card}>
-                {/* Header: step counter + skip */}
+                {/* Header: step dots + skip */}
                 <View style={s.cardHeader}>
-                  <View style={s.stepPill}>
-                    <Text style={s.stepPillText}>{stepLabel}</Text>
+                  <View style={s.stepDots}>
+                    {Array.from({length: totalSteps}).map((_, i) => (
+                      <View
+                        key={i}
+                        style={[
+                          s.stepDot,
+                          i === stepIndex ? s.stepDotActive : s.stepDotInactive,
+                          i === stepIndex && s.stepDotExpanded,
+                        ]}
+                      />
+                    ))}
                   </View>
                   <TouchableOpacity
                     onPress={onSkip}
@@ -507,6 +515,25 @@ const s = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
+  },
+  stepDots: {
+    flexDirection: 'row',
+    gap: 6,
+    alignItems: 'center',
+  },
+  stepDot: {
+    height: 7,
+    borderRadius: 4,
+  },
+  stepDotActive: {
+    backgroundColor: ACCENT,
+  },
+  stepDotInactive: {
+    width: 7,
+    backgroundColor: '#D8C9FF',
+  },
+  stepDotExpanded: {
+    width: 20,
   },
   stepPill: {
     backgroundColor: '#EDE0FF',

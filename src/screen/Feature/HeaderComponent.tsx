@@ -56,7 +56,9 @@ const HeaderComponent = ({
 const styles = StyleSheet.create({
   headerContainer: {
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 25 : 50,
+
+    paddingVertical:15,
+
     paddingBottom: 12,
     backgroundColor: color.purple,
     flexDirection: 'row',

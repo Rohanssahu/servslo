@@ -39,9 +39,10 @@ import WalkthroughOverlay, {
 } from '../../component/WalkthroughOverlay';
 import {
   FlashDealStrip,
-  CampaignCard,
+  RotatingCampaignBanner,
   CouponStrip,
   ContextualPromo,
+  ScrollPromoToast,
 } from '../../component/CampaignSystem';
 
 const {width} = Dimensions.get('window');
@@ -781,9 +782,8 @@ export default function HomeScreen({navigation}: {navigation: any}) {
             </ScrollView>
           </View>
 
-          {/* IPL Campaign Card */}
-          <CampaignCard
-            type="ipl"
+          {/* Rotating Campaign Banner (auto-cycles IPL → Monsoon → First-time) */}
+          <RotatingCampaignBanner
             lang={lang}
             onPress={() => sheetRef.current?.open()}
           />
@@ -881,20 +881,10 @@ export default function HomeScreen({navigation}: {navigation: any}) {
             </ScrollView>
           </View>
 
-          {/* Contextual Promo */}
+          {/* Contextual Promo (rotates through AC / Cleaning / Electrician) */}
           <ContextualPromo
             lang={lang}
-            onPress={() =>
-              navigation.navigate(ScreenNameEnum.ServiceBookingScreen, {
-                service: {
-                  label: 'AC Service',
-                  emoji: '❄️',
-                  desc: 'Service & repair',
-                  rating: '4.8',
-                  basePrice: 349,
-                },
-              })
-            }
+            onPress={() => sheetRef.current?.open()}
           />
 
           {/* Our Services */}
@@ -954,18 +944,6 @@ export default function HomeScreen({navigation}: {navigation: any}) {
             </ScrollView>
           </View>
 
-          {/* Monsoon Campaign Card */}
-          <CampaignCard
-            type="monsoon"
-            lang={lang}
-            onPress={() =>
-              navigation.navigate(ScreenNameEnum.NearbyProvidersScreen, {
-                category: 'Electricians',
-                title: 'Electricians Nearby',
-              })
-            }
-          />
-
           {/* Appliance Repair */}
           <View style={s.card}>
             <View style={s.cardTitleRow}>
@@ -1016,6 +994,8 @@ export default function HomeScreen({navigation}: {navigation: any}) {
           <View style={s.bottomSpacer} />
         </ScrollView>
       )}
+
+      <ScrollPromoToast lang={lang} />
 
       <ServiceBottomSheet
         ref={sheetRef}

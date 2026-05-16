@@ -1,4 +1,4 @@
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {
   Animated,
   Dimensions,
@@ -13,7 +13,6 @@ import LinearGradient from 'react-native-linear-gradient';
 
 const {width} = Dimensions.get('window');
 
-// ── Design tokens (matches HomeScreen palette) ────────────────────────────────
 const C = {
   purple: '#4d2b98',
   purpleL: '#f3eeff',
@@ -25,54 +24,14 @@ const C = {
   greenBg: '#e8fbf0',
 };
 
-// ── Campaign data ─────────────────────────────────────────────────────────────
+// ── Data ──────────────────────────────────────────────────────────────────────
 
 const FLASH_DEALS = [
-  {
-    id: 'fd1',
-    emoji: '🎉',
-    hot: true,
-    label: 'First Service FREE',
-    labelHi: 'पहली सेवा FREE',
-    badge: 'FIRST100',
-    urgency: null as string | null,
-  },
-  {
-    id: 'fd2',
-    emoji: '⚡',
-    hot: true,
-    label: '50% off AC Service',
-    labelHi: 'AC सेवा 50% छूट',
-    badge: '50% OFF',
-    urgency: '3h left',
-  },
-  {
-    id: 'fd3',
-    emoji: '🏏',
-    hot: false,
-    label: 'IPL Special ₹80 off',
-    labelHi: 'IPL स्पेशल ₹80 छूट',
-    badge: '₹80 OFF',
-    urgency: '4h left',
-  },
-  {
-    id: 'fd4',
-    emoji: '🌧️',
-    hot: false,
-    label: 'Monsoon Electrician',
-    labelHi: 'मानसून इलेक्ट्रीशियन',
-    badge: '30% OFF',
-    urgency: null,
-  },
-  {
-    id: 'fd5',
-    emoji: '🧹',
-    hot: false,
-    label: 'Deep Clean Bundle',
-    labelHi: 'डीप क्लीन बंडल',
-    badge: '₹100 OFF',
-    urgency: null,
-  },
+  {id: 'fd1', emoji: '🎉', hot: true, label: 'First Service FREE', labelHi: 'पहली सेवा FREE', badge: 'FIRST100', urgency: null as string | null},
+  {id: 'fd2', emoji: '⚡', hot: true, label: '50% off AC Service', labelHi: 'AC सेवा 50% छूट', badge: '50% OFF', urgency: '3h left'},
+  {id: 'fd3', emoji: '🏏', hot: false, label: 'IPL Special ₹80 off', labelHi: 'IPL स्पेशल ₹80 छूट', badge: '₹80 OFF', urgency: '4h left'},
+  {id: 'fd4', emoji: '🌧️', hot: false, label: 'Monsoon Electrician', labelHi: 'मानसून इलेक्ट्रीशियन', badge: '30% OFF', urgency: null},
+  {id: 'fd5', emoji: '🧹', hot: false, label: 'Deep Clean Bundle', labelHi: 'डीप क्लीन बंडल', badge: '₹100 OFF', urgency: null},
 ];
 
 interface CampaignConfig {
@@ -126,7 +85,7 @@ const CAMPAIGN_CONFIGS: Record<string, CampaignConfig> = {
     emoji: '🎁',
     title: 'New Here? ₹100 Off!',
     titleHi: 'पहली बार? ₹100 की छूट!',
-    sub: 'Flat ₹100 off your first booking. No minimum order required. Use code NEW100',
+    sub: 'Flat ₹100 off your first booking. No minimum order. Use code NEW100',
     subHi: 'पहली बुकिंग पर flat ₹100 छूट। कोई minimum नहीं। कोड: NEW100',
     cta: 'Claim Offer  ·  NEW100',
     ctaHi: 'ऑफर क्लेम करें  ·  NEW100',
@@ -139,6 +98,8 @@ const CAMPAIGN_CONFIGS: Record<string, CampaignConfig> = {
   },
 };
 
+const CAMPAIGN_ORDER = ['ipl', 'monsoon', 'firsttime'] as const;
+
 interface CouponData {
   code: string;
   desc: string;
@@ -149,174 +110,235 @@ interface CouponData {
 }
 
 const COUPONS: CouponData[] = [
+  {code: 'CLEAN50', desc: '₹50 off on cleaning above ₹299', descHi: '₹299 से ऊपर सफाई पर ₹50 छूट', saving: '₹50', min: '₹299', expiry: 'Today only'},
+  {code: 'IPL80', desc: '₹80 off any service tonight', descHi: 'आज रात किसी भी सेवा पर ₹80 छूट', saving: '₹80', min: '₹200', expiry: '8h left'},
+];
+
+interface ContextualPromoConfig {
+  tag: string;
+  tagHi: string;
+  title: string;
+  titleHi: string;
+  sub: string;
+  subHi: string;
+  price: string;
+  oldPrice: string;
+  off: string;
+  emoji: string;
+  gradient: string[];
+  subColor: string;
+  tagColor: string;
+}
+
+const CONTEXTUAL_PROMOS: ContextualPromoConfig[] = [
   {
-    code: 'CLEAN50',
-    desc: '₹50 off on cleaning above ₹299',
-    descHi: '₹299 से ऊपर सफाई पर ₹50 छूट',
-    saving: '₹50',
-    min: '₹299',
-    expiry: 'Today only',
+    tag: '🤖 Picked for you',
+    tagHi: '🤖 आपके लिए',
+    title: 'AC Service Pack',
+    titleHi: 'AC सर्विस पैक',
+    sub: 'Best price this summer — limited slots',
+    subHi: 'इस गर्मी का बेस्ट प्राइस — सीमित स्लॉट',
+    price: '₹349',
+    oldPrice: '₹499',
+    off: '30% OFF',
+    emoji: '❄️',
+    gradient: ['#fffbeb', '#fef3c7', '#fde68a'],
+    subColor: '#92400e',
+    tagColor: '#78350f',
   },
   {
-    code: 'IPL80',
-    desc: '₹80 off any service tonight',
-    descHi: 'आज रात किसी भी सेवा पर ₹80 छूट',
-    saving: '₹80',
-    min: '₹200',
-    expiry: '8h left',
+    tag: '🔥 Trending now',
+    tagHi: '🔥 अभी ट्रेंडिंग',
+    title: 'Deep Home Cleaning',
+    titleHi: 'डीप होम क्लीनिंग',
+    sub: 'Professional deep clean — book before slots fill',
+    subHi: 'प्रोफेशनल डीप क्लीन — स्लॉट भरने से पहले',
+    price: '₹499',
+    oldPrice: '₹699',
+    off: '29% OFF',
+    emoji: '🧹',
+    gradient: ['#ecfdf5', '#d1fae5', '#a7f3d0'],
+    subColor: '#065f46',
+    tagColor: '#047857',
+  },
+  {
+    tag: '⚡ Quick fix',
+    tagHi: '⚡ जल्दी ठीक',
+    title: 'Electrician @ Home',
+    titleHi: 'घर पर इलेक्ट्रीशियन',
+    sub: 'Wiring, switches & more — arrives in 10 min',
+    subHi: 'वायरिंग, स्विच और ज़्यादा — 10 मिनट में',
+    price: '₹199',
+    oldPrice: '₹299',
+    off: '34% OFF',
+    emoji: '⚡',
+    gradient: ['#fefce8', '#fef9c3', '#fde047'],
+    subColor: '#713f12',
+    tagColor: '#854d0e',
   },
 ];
 
-// ── FlashDealStrip ────────────────────────────────────────────────────────────
+const SCROLL_TOASTS = [
+  {emoji: '🎉', text: 'First service FREE! Use FIRST100', textHi: 'पहली सेवा FREE! कोड: FIRST100'},
+  {emoji: '⚡', text: '50% off AC Service — today only!', textHi: 'आज सिर्फ AC सेवा 50% छूट!'},
+  {emoji: '🧹', text: '₹100 off cleaning! Code: CLEAN100', textHi: '₹100 सफाई पर छूट! कोड: CLEAN100'},
+  {emoji: '🎁', text: 'New deal just dropped — ₹80 off', textHi: 'नया ऑफर — ₹80 की छूट'},
+];
+
+// ── FlashDealStrip (active deal cycles every 3.5 s) ───────────────────────────
 export function FlashDealStrip({lang}: {lang: string}) {
+  const [activeIdx, setActiveIdx] = useState(0);
+  const scrollRef = useRef<ScrollView>(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const chipAnims = useRef(FLASH_DEALS.map(() => new Animated.Value(1))).current;
 
   useEffect(() => {
     const anim = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 0.45,
-          duration: 700,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 700,
-          useNativeDriver: true,
-        }),
+        Animated.timing(pulseAnim, {toValue: 0.45, duration: 700, useNativeDriver: true}),
+        Animated.timing(pulseAnim, {toValue: 1, duration: 700, useNativeDriver: true}),
       ]),
     );
     anim.start();
     return () => anim.stop();
   }, [pulseAnim]);
 
+  useEffect(() => {
+    const CHIP_W = 192;
+    const interval = setInterval(() => {
+      setActiveIdx(prev => {
+        const next = (prev + 1) % FLASH_DEALS.length;
+        Animated.sequence([
+          Animated.timing(chipAnims[next], {toValue: 1.06, duration: 180, useNativeDriver: true}),
+          Animated.spring(chipAnims[next], {toValue: 1, tension: 300, friction: 8, useNativeDriver: true}),
+        ]).start();
+        scrollRef.current?.scrollTo({x: next * CHIP_W, animated: true});
+        return next;
+      });
+    }, 3500);
+    return () => clearInterval(interval);
+  }, [chipAnims]);
+
   return (
     <View style={fs.wrap}>
       <View style={fs.header}>
         <Animated.Text style={[fs.bolt, {opacity: pulseAnim}]}>⚡</Animated.Text>
-        <Text style={fs.headerLabel}>
-          {lang === 'hi' ? 'आज के ऑफर' : "Today's Deals"}
-        </Text>
+        <Text style={fs.headerLabel}>{lang === 'hi' ? 'आज के ऑफर' : "Today's Deals"}</Text>
         <View style={fs.liveDot}>
           <Text style={fs.liveDotText}>LIVE</Text>
         </View>
       </View>
       <ScrollView
+        ref={scrollRef}
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={fs.scroll}>
-        {FLASH_DEALS.map(deal => (
-          <TouchableOpacity
-            key={deal.id}
-            style={[fs.chip, deal.hot && fs.chipHot]}
-            activeOpacity={0.8}>
-            <Text style={fs.chipEmoji}>{deal.emoji}</Text>
-            <Text
-              style={[fs.chipLabel, deal.hot && fs.chipLabelHot]}
-              numberOfLines={1}>
-              {lang === 'hi' ? deal.labelHi : deal.label}
-            </Text>
-            <View style={[fs.chipBadge, deal.hot && fs.chipBadgeHot]}>
-              <Text style={[fs.chipBadgeText, deal.hot && fs.chipBadgeTextHot]}>
-                {deal.badge}
+        {FLASH_DEALS.map((deal, i) => (
+          <Animated.View key={deal.id} style={{transform: [{scale: chipAnims[i]}]}}>
+            <TouchableOpacity
+              style={[fs.chip, deal.hot && fs.chipHot, i === activeIdx && fs.chipActive]}
+              activeOpacity={0.8}>
+              <Text style={fs.chipEmoji}>{deal.emoji}</Text>
+              <Text style={[fs.chipLabel, deal.hot && fs.chipLabelHot, i === activeIdx && fs.chipLabelActive]} numberOfLines={1}>
+                {lang === 'hi' ? deal.labelHi : deal.label}
               </Text>
-            </View>
-            {deal.urgency ? (
-              <View style={fs.urgency}>
-                <Text style={fs.urgencyText}>⏱ {deal.urgency}</Text>
+              <View style={[fs.chipBadge, deal.hot && fs.chipBadgeHot, i === activeIdx && fs.chipBadgeActive]}>
+                <Text style={[fs.chipBadgeText, deal.hot && fs.chipBadgeTextHot, i === activeIdx && fs.chipBadgeTextActive]}>
+                  {deal.badge}
+                </Text>
               </View>
-            ) : null}
-          </TouchableOpacity>
+              {deal.urgency ? (
+                <View style={fs.urgency}>
+                  <Text style={fs.urgencyText}>⏱ {deal.urgency}</Text>
+                </View>
+              ) : null}
+            </TouchableOpacity>
+          </Animated.View>
         ))}
       </ScrollView>
     </View>
   );
 }
 
-// ── CampaignCard ──────────────────────────────────────────────────────────────
-export function CampaignCard({
-  type,
+// ── RotatingCampaignBanner ─────────────────────────────────────────────────────
+export function RotatingCampaignBanner({
   lang,
   onPress,
 }: {
-  type: keyof typeof CAMPAIGN_CONFIGS;
   lang: string;
   onPress?: () => void;
 }) {
-  const cfg = CAMPAIGN_CONFIGS[type];
-  const slideAnim = useRef(new Animated.Value(18)).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const [activeIdx, setActiveIdx] = useState(0);
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const slideAnim = useRef(new Animated.Value(0)).current;
   const badgePulse = useRef(new Animated.Value(1)).current;
+  const badgeLoopRef = useRef<Animated.CompositeAnimation | null>(null);
+
+  const startBadgePulse = useCallback(
+    (isLive: boolean) => {
+      badgeLoopRef.current?.stop();
+      badgePulse.setValue(1);
+      if (!isLive) {
+        return;
+      }
+      badgeLoopRef.current = Animated.loop(
+        Animated.sequence([
+          Animated.timing(badgePulse, {toValue: 1.06, duration: 650, useNativeDriver: true}),
+          Animated.timing(badgePulse, {toValue: 1, duration: 650, useNativeDriver: true}),
+        ]),
+      );
+      badgeLoopRef.current.start();
+    },
+    [badgePulse],
+  );
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 380,
-        useNativeDriver: true,
-      }),
-      Animated.spring(slideAnim, {
-        toValue: 0,
-        tension: 65,
-        friction: 11,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [fadeAnim, slideAnim]);
+    startBadgePulse(CAMPAIGN_CONFIGS[CAMPAIGN_ORDER[0]].isLive);
+    return () => badgeLoopRef.current?.stop();
+  }, [startBadgePulse]);
 
+  // Rotate every 75 seconds
   useEffect(() => {
-    if (!cfg.isLive) {
-      return;
-    }
-    const anim = Animated.loop(
-      Animated.sequence([
-        Animated.timing(badgePulse, {
-          toValue: 1.06,
-          duration: 650,
-          useNativeDriver: true,
-        }),
-        Animated.timing(badgePulse, {
-          toValue: 1,
-          duration: 650,
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-    anim.start();
-    return () => anim.stop();
-  }, [badgePulse, cfg.isLive]);
+    const interval = setInterval(() => {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {toValue: 0, duration: 300, useNativeDriver: true}),
+        Animated.timing(slideAnim, {toValue: -14, duration: 300, useNativeDriver: true}),
+      ]).start(() => {
+        setActiveIdx(prev => {
+          const next = (prev + 1) % CAMPAIGN_ORDER.length;
+          startBadgePulse(CAMPAIGN_CONFIGS[CAMPAIGN_ORDER[next]].isLive);
+          return next;
+        });
+        slideAnim.setValue(14);
+        Animated.parallel([
+          Animated.timing(fadeAnim, {toValue: 1, duration: 380, useNativeDriver: true}),
+          Animated.spring(slideAnim, {toValue: 0, tension: 65, friction: 11, useNativeDriver: true}),
+        ]).start();
+      });
+    }, 75000);
+    return () => clearInterval(interval);
+  }, [fadeAnim, slideAnim, startBadgePulse]);
+
+  const cfg = CAMPAIGN_CONFIGS[CAMPAIGN_ORDER[activeIdx]];
 
   return (
-    <Animated.View
-      style={[
-        cc.wrapper,
-        {opacity: fadeAnim, transform: [{translateY: slideAnim}]},
-      ]}>
+    <Animated.View style={[cc.wrapper, {opacity: fadeAnim, transform: [{translateY: slideAnim}]}]}>
       <TouchableOpacity activeOpacity={0.9} onPress={onPress}>
         <LinearGradient
           colors={cfg.gradient}
           style={cc.card}
           start={{x: 0, y: 0}}
           end={{x: 1, y: 1}}>
-          <Animated.View
-            style={[cc.badge, {transform: [{scale: badgePulse}]}]}>
-            <Text style={cc.badgeText}>
-              {lang === 'hi' ? cfg.badgeHi : cfg.badge}
-            </Text>
+          <Animated.View style={[cc.badge, {transform: [{scale: badgePulse}]}]}>
+            <Text style={cc.badgeText}>{lang === 'hi' ? cfg.badgeHi : cfg.badge}</Text>
           </Animated.View>
-
           <View style={cc.body}>
             <Text style={cc.bigEmoji}>{cfg.emoji}</Text>
             <View style={cc.textBlock}>
-              <Text style={cc.title}>
-                {lang === 'hi' ? cfg.titleHi : cfg.title}
-              </Text>
-              <Text style={cc.sub} numberOfLines={2}>
-                {lang === 'hi' ? cfg.subHi : cfg.sub}
-              </Text>
+              <Text style={cc.title}>{lang === 'hi' ? cfg.titleHi : cfg.title}</Text>
+              <Text style={cc.sub} numberOfLines={2}>{lang === 'hi' ? cfg.subHi : cfg.sub}</Text>
             </View>
           </View>
-
           <TouchableOpacity
             style={[cc.ctaBtn, {backgroundColor: cfg.accent}]}
             activeOpacity={0.85}
@@ -327,11 +349,16 @@ export function CampaignCard({
           </TouchableOpacity>
         </LinearGradient>
       </TouchableOpacity>
+      <View style={cc.dots}>
+        {CAMPAIGN_ORDER.map((_, i) => (
+          <View key={i} style={[cc.dot, i === activeIdx && cc.dotActive]} />
+        ))}
+      </View>
     </Animated.View>
   );
 }
 
-// ── CouponCard (isolated animation per card) ──────────────────────────────────
+// ── CouponCard ─────────────────────────────────────────────────────────────────
 function CouponCard({coupon, lang}: {coupon: CouponData; lang: string}) {
   const [copied, setCopied] = useState(false);
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -342,17 +369,8 @@ function CouponCard({coupon, lang}: {coupon: CouponData; lang: string}) {
     }
     setCopied(true);
     Animated.sequence([
-      Animated.timing(scaleAnim, {
-        toValue: 0.94,
-        duration: 70,
-        useNativeDriver: true,
-      }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        tension: 280,
-        friction: 8,
-        useNativeDriver: true,
-      }),
+      Animated.timing(scaleAnim, {toValue: 0.94, duration: 70, useNativeDriver: true}),
+      Animated.spring(scaleAnim, {toValue: 1, tension: 280, friction: 8, useNativeDriver: true}),
     ]).start();
     setTimeout(() => setCopied(false), 2400);
   };
@@ -368,24 +386,16 @@ function CouponCard({coupon, lang}: {coupon: CouponData; lang: string}) {
         </Text>
         <Text style={cs.minText}>Min: {coupon.min}</Text>
       </View>
-
       <View style={cs.divider} />
-
       <View style={cs.cardRight}>
         <TouchableOpacity onPress={handleTap} activeOpacity={0.75}>
           <View style={[cs.codeBox, copied && cs.codeBoxCopied]}>
-            <Text style={[cs.codeText, copied && cs.codeTextCopied]}>
-              {coupon.code}
-            </Text>
+            <Text style={[cs.codeText, copied && cs.codeTextCopied]}>{coupon.code}</Text>
           </View>
           <Text style={cs.tapLabel}>
             {copied
-              ? lang === 'hi'
-                ? '✓ कॉपी हो गया!'
-                : '✓ Copied!'
-              : lang === 'hi'
-              ? 'टैप करें'
-              : 'Tap to copy'}
+              ? lang === 'hi' ? '✓ कॉपी हो गया!' : '✓ Copied!'
+              : lang === 'hi' ? 'टैप करें' : 'Tap to copy'}
           </Text>
         </TouchableOpacity>
         <View style={cs.expiryPill}>
@@ -402,9 +412,7 @@ export function CouponStrip({lang}: {lang: string}) {
     <View style={cs.wrap}>
       <View style={cs.headerRow}>
         <Text style={cs.headerIcon}>🎟️</Text>
-        <Text style={cs.headerTitle}>
-          {lang === 'hi' ? 'आपके कूपन' : 'Your Coupons'}
-        </Text>
+        <Text style={cs.headerTitle}>{lang === 'hi' ? 'आपके कूपन' : 'Your Coupons'}</Text>
         <View style={cs.activePill}>
           <Text style={cs.activePillText}>{COUPONS.length} active</Text>
         </View>
@@ -421,7 +429,7 @@ export function CouponStrip({lang}: {lang: string}) {
   );
 }
 
-// ── ContextualPromo ───────────────────────────────────────────────────────────
+// ── ContextualPromo (rotates through 3 promos every 90 s) ─────────────────────
 export function ContextualPromo({
   lang,
   onPress,
@@ -429,69 +437,70 @@ export function ContextualPromo({
   lang: string;
   onPress?: () => void;
 }) {
+  const [activeIdx, setActiveIdx] = useState(0);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(10)).current;
 
+  // Mount animation
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 450,
-        useNativeDriver: true,
-      }),
-      Animated.spring(slideAnim, {
-        toValue: 0,
-        tension: 80,
-        friction: 12,
-        useNativeDriver: true,
-      }),
+      Animated.timing(fadeAnim, {toValue: 1, duration: 450, useNativeDriver: true}),
+      Animated.spring(slideAnim, {toValue: 0, tension: 80, friction: 12, useNativeDriver: true}),
     ]).start();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Rotate every 90 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {toValue: 0, duration: 280, useNativeDriver: true}),
+        Animated.timing(slideAnim, {toValue: 10, duration: 280, useNativeDriver: true}),
+      ]).start(() => {
+        setActiveIdx(prev => (prev + 1) % CONTEXTUAL_PROMOS.length);
+        slideAnim.setValue(-10);
+        Animated.parallel([
+          Animated.timing(fadeAnim, {toValue: 1, duration: 360, useNativeDriver: true}),
+          Animated.spring(slideAnim, {toValue: 0, tension: 80, friction: 12, useNativeDriver: true}),
+        ]).start();
+      });
+    }, 90000);
+    return () => clearInterval(interval);
   }, [fadeAnim, slideAnim]);
+
+  const promo = CONTEXTUAL_PROMOS[activeIdx];
 
   return (
     <Animated.View
-      style={[
-        cp.wrapper,
-        {opacity: fadeAnim, transform: [{translateY: slideAnim}]},
-      ]}>
+      style={[cp.wrapper, {opacity: fadeAnim, transform: [{translateY: slideAnim}]}]}>
       <TouchableOpacity activeOpacity={0.88} onPress={onPress}>
         <LinearGradient
-          colors={['#fffbeb', '#fef3c7', '#fde68a']}
+          colors={promo.gradient}
           style={cp.card}
           start={{x: 0, y: 0}}
           end={{x: 1, y: 0.6}}>
           <View style={cp.left}>
             <View style={cp.aiTag}>
-              <Text style={cp.aiTagText}>
-                {lang === 'hi' ? '🤖 आपके लिए' : '🤖 Picked for you'}
+              <Text style={[cp.aiTagText, {color: promo.tagColor}]}>
+                {lang === 'hi' ? promo.tagHi : promo.tag}
               </Text>
             </View>
-            <Text style={cp.title}>
-              {lang === 'hi' ? 'AC सर्विस पैक' : 'AC Service Pack'}
-            </Text>
-            <Text style={cp.sub} numberOfLines={2}>
-              {lang === 'hi'
-                ? 'गर्मी के सीजन का बेस्ट प्राइस — अभी बुक करें'
-                : 'Best price of summer season — limited time'}
+            <Text style={cp.title}>{lang === 'hi' ? promo.titleHi : promo.title}</Text>
+            <Text style={[cp.sub, {color: promo.subColor}]} numberOfLines={2}>
+              {lang === 'hi' ? promo.subHi : promo.sub}
             </Text>
             <View style={cp.priceRow}>
-              <Text style={cp.price}>₹349</Text>
-              <Text style={cp.oldPrice}>₹499</Text>
+              <Text style={cp.price}>{promo.price}</Text>
+              <Text style={cp.oldPrice}>{promo.oldPrice}</Text>
               <View style={cp.offTag}>
-                <Text style={cp.offTagText}>30% OFF</Text>
+                <Text style={cp.offTagText}>{promo.off}</Text>
               </View>
             </View>
           </View>
-
           <View style={cp.right}>
-            <Text style={cp.bigEmoji}>❄️</Text>
-            <TouchableOpacity
-              style={cp.bookBtn}
-              onPress={onPress}
-              activeOpacity={0.8}>
-              <Text style={cp.bookBtnText}>
-                {lang === 'hi' ? 'बुक करें' : 'Book'}
-              </Text>
+            <Text style={cp.bigEmoji}>{promo.emoji}</Text>
+            <TouchableOpacity style={cp.bookBtn} onPress={onPress} activeOpacity={0.8}>
+              <Text style={cp.bookBtnText}>{lang === 'hi' ? 'बुक करें' : 'Book'}</Text>
             </TouchableOpacity>
           </View>
         </LinearGradient>
@@ -500,15 +509,92 @@ export function ContextualPromo({
   );
 }
 
+// ── ScrollPromoToast (floating timed offer pill) ──────────────────────────────
+export function ScrollPromoToast({lang}: {lang: string}) {
+  const [visible, setVisible] = useState(false);
+  const [toastIdx, setToastIdx] = useState(0);
+  const slideAnim = useRef(new Animated.Value(90)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const dismiss = useCallback(() => {
+    if (hideTimerRef.current) {
+      clearTimeout(hideTimerRef.current);
+    }
+    Animated.parallel([
+      Animated.timing(fadeAnim, {toValue: 0, duration: 240, useNativeDriver: true}),
+      Animated.timing(slideAnim, {toValue: 90, duration: 240, useNativeDriver: true}),
+    ]).start(() => setVisible(false));
+  }, [fadeAnim, slideAnim]);
+
+  const showToast = useCallback(
+    (idx: number) => {
+      if (hideTimerRef.current) {
+        clearTimeout(hideTimerRef.current);
+      }
+      setToastIdx(idx);
+      setVisible(true);
+      slideAnim.setValue(90);
+      fadeAnim.setValue(0);
+      Animated.parallel([
+        Animated.timing(fadeAnim, {toValue: 1, duration: 320, useNativeDriver: true}),
+        Animated.spring(slideAnim, {toValue: 0, tension: 62, friction: 10, useNativeDriver: true}),
+      ]).start();
+      hideTimerRef.current = setTimeout(dismiss, 6000);
+    },
+    [fadeAnim, slideAnim, dismiss],
+  );
+
+  useEffect(() => {
+    const firstTimer = setTimeout(() => showToast(0), 5000);
+    let count = 1;
+    const interval = setInterval(() => {
+      showToast(count % SCROLL_TOASTS.length);
+      count++;
+    }, 90000);
+    return () => {
+      clearTimeout(firstTimer);
+      clearInterval(interval);
+      if (hideTimerRef.current) {
+        clearTimeout(hideTimerRef.current);
+      }
+    };
+  }, [showToast]);
+
+  if (!visible) {
+    return null;
+  }
+
+  const toast = SCROLL_TOASTS[toastIdx];
+
+  return (
+    <Animated.View
+      style={[spt.wrapper, {opacity: fadeAnim, transform: [{translateY: slideAnim}]}]}
+      pointerEvents="box-none">
+      <LinearGradient
+        colors={['#4d2b98', '#6E39F7']}
+        style={spt.pill}
+        start={{x: 0, y: 0}}
+        end={{x: 1, y: 0}}>
+        <Text style={spt.emoji}>{toast.emoji}</Text>
+        <Text style={spt.text} numberOfLines={1}>
+          {lang === 'hi' ? toast.textHi : toast.text}
+        </Text>
+        <TouchableOpacity
+          onPress={dismiss}
+          style={spt.closeBtn}
+          hitSlop={{top: 12, bottom: 12, left: 12, right: 12}}>
+          <Text style={spt.closeText}>✕</Text>
+        </TouchableOpacity>
+      </LinearGradient>
+    </Animated.View>
+  );
+}
+
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const shadow = Platform.select({
-  ios: {
-    shadowColor: '#000',
-    shadowOpacity: 0.07,
-    shadowRadius: 10,
-    shadowOffset: {width: 0, height: 3},
-  },
+  ios: {shadowColor: '#000', shadowOpacity: 0.07, shadowRadius: 10, shadowOffset: {width: 0, height: 3}},
   android: {elevation: 3},
 });
 
@@ -545,12 +631,7 @@ const fs = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 6,
   },
-  liveDotText: {
-    fontSize: 10,
-    fontWeight: '900',
-    color: '#ef4444',
-    letterSpacing: 0.5,
-  },
+  liveDotText: {fontSize: 10, fontWeight: '900', color: '#ef4444', letterSpacing: 0.5},
   scroll: {paddingHorizontal: 13, gap: 8},
   chip: {
     flexDirection: 'row',
@@ -564,46 +645,30 @@ const fs = StyleSheet.create({
     borderColor: '#ddd4f8',
   },
   chipHot: {backgroundColor: '#fff7ed', borderColor: '#fed7aa'},
+  chipActive: {borderColor: C.purple, borderWidth: 1.5, backgroundColor: '#ede0ff'},
   chipEmoji: {fontSize: 14},
-  chipLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: C.text,
-    maxWidth: 108,
-  },
+  chipLabel: {fontSize: 12, fontWeight: '600', color: C.text, maxWidth: 108},
   chipLabelHot: {color: '#9a3412'},
-  chipBadge: {
-    backgroundColor: C.greenBg,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 5,
-  },
+  chipLabelActive: {color: C.purple, fontWeight: '800'},
+  chipBadge: {backgroundColor: C.greenBg, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 5},
   chipBadgeHot: {backgroundColor: '#fee2e2'},
+  chipBadgeActive: {backgroundColor: C.purple},
   chipBadgeText: {fontSize: 10, fontWeight: '800', color: C.green},
   chipBadgeTextHot: {color: '#dc2626'},
-  urgency: {
-    backgroundColor: '#fee2e2',
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-    borderRadius: 4,
-  },
+  chipBadgeTextActive: {color: '#fff'},
+  urgency: {backgroundColor: '#fee2e2', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4},
   urgencyText: {fontSize: 9, fontWeight: '700', color: '#ef4444'},
 });
 
-// CampaignCard
+// RotatingCampaignBanner
 const cc = StyleSheet.create({
   wrapper: {
     marginHorizontal: 16,
     marginBottom: 14,
     borderRadius: 20,
-    overflow: 'hidden',
+    overflow: 'visible',
     ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOpacity: 0.18,
-        shadowRadius: 14,
-        shadowOffset: {width: 0, height: 5},
-      },
+      ios: {shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 14, shadowOffset: {width: 0, height: 5}},
       android: {elevation: 6},
     }),
   },
@@ -611,6 +676,7 @@ const cc = StyleSheet.create({
     borderRadius: 20,
     padding: 18,
     minHeight: 148,
+    overflow: 'hidden',
   },
   badge: {
     alignSelf: 'flex-start',
@@ -623,32 +689,31 @@ const cc = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.22)',
   },
   badgeText: {fontSize: 11, fontWeight: '800', color: '#fff'},
-  body: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 15,
-    gap: 13,
-  },
+  body: {flexDirection: 'row', alignItems: 'flex-start', marginBottom: 15, gap: 13},
   bigEmoji: {fontSize: 38, lineHeight: 42},
   textBlock: {flex: 1},
-  title: {
-    fontSize: 19,
-    fontWeight: '900',
-    color: '#fff',
-    marginBottom: 5,
-    lineHeight: 23,
-  },
-  sub: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.78)',
-    lineHeight: 18,
-  },
-  ctaBtn: {
-    borderRadius: 13,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
+  title: {fontSize: 19, fontWeight: '900', color: '#fff', marginBottom: 5, lineHeight: 23},
+  sub: {fontSize: 13, color: 'rgba(255,255,255,0.78)', lineHeight: 18},
+  ctaBtn: {borderRadius: 13, paddingVertical: 12, alignItems: 'center'},
   ctaText: {fontSize: 14, fontWeight: '800'},
+  dots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 10,
+    marginBottom: 2,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#d4bbff',
+  },
+  dotActive: {
+    width: 18,
+    borderRadius: 3,
+    backgroundColor: C.purple,
+  },
 });
 
 // CouponStrip
@@ -670,18 +735,8 @@ const cs = StyleSheet.create({
     gap: 6,
   },
   headerIcon: {fontSize: 16},
-  headerTitle: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '800',
-    color: C.text,
-  },
-  activePill: {
-    backgroundColor: C.greenBg,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-  },
+  headerTitle: {flex: 1, fontSize: 14, fontWeight: '800', color: C.text},
+  activePill: {backgroundColor: C.greenBg, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10},
   activePillText: {fontSize: 10, fontWeight: '800', color: C.green},
   scroll: {paddingHorizontal: 14, gap: 10},
   card: {
@@ -703,19 +758,9 @@ const cs = StyleSheet.create({
     marginBottom: 7,
   },
   savingText: {fontSize: 11, fontWeight: '800', color: C.green},
-  desc: {
-    fontSize: 12,
-    color: C.text,
-    fontWeight: '600',
-    lineHeight: 16,
-    marginBottom: 5,
-  },
+  desc: {fontSize: 12, color: C.text, fontWeight: '600', lineHeight: 16, marginBottom: 5},
   minText: {fontSize: 10, color: C.sub},
-  divider: {
-    width: 1,
-    backgroundColor: '#e0d4f8',
-    marginVertical: 8,
-  },
+  divider: {width: 1, backgroundColor: '#e0d4f8', marginVertical: 8},
   cardRight: {
     width: 82,
     alignItems: 'center',
@@ -734,25 +779,11 @@ const cs = StyleSheet.create({
     marginBottom: 4,
     borderStyle: 'dashed',
   },
-  codeBoxCopied: {
-    backgroundColor: C.greenBg,
-    borderColor: C.green,
-    borderStyle: 'solid',
-  },
-  codeText: {
-    fontSize: 12,
-    fontWeight: '900',
-    color: C.purple,
-    letterSpacing: 0.4,
-  },
+  codeBoxCopied: {backgroundColor: C.greenBg, borderColor: C.green, borderStyle: 'solid'},
+  codeText: {fontSize: 12, fontWeight: '900', color: C.purple, letterSpacing: 0.4},
   codeTextCopied: {color: C.green},
   tapLabel: {fontSize: 9, color: C.sub, textAlign: 'center'},
-  expiryPill: {
-    backgroundColor: '#fff7ed',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
+  expiryPill: {backgroundColor: '#fff7ed', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6},
   expiryText: {fontSize: 9, fontWeight: '700', color: '#f97316'},
 });
 
@@ -781,40 +812,43 @@ const cp = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 7,
   },
-  aiTagText: {fontSize: 11, fontWeight: '700', color: '#78350f'},
-  title: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#1a1a2e',
-    marginBottom: 3,
-  },
-  sub: {
-    fontSize: 12,
-    color: '#92400e',
-    lineHeight: 17,
-    marginBottom: 9,
-  },
+  aiTagText: {fontSize: 11, fontWeight: '700'},
+  title: {fontSize: 16, fontWeight: '800', color: '#1a1a2e', marginBottom: 3},
+  sub: {fontSize: 12, lineHeight: 17, marginBottom: 9},
   priceRow: {flexDirection: 'row', alignItems: 'center', gap: 6},
   price: {fontSize: 17, fontWeight: '900', color: '#1a1a2e'},
-  oldPrice: {
-    fontSize: 13,
-    color: '#aaa',
-    textDecorationLine: 'line-through',
-  },
-  offTag: {
-    backgroundColor: C.greenBg,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 5,
-  },
+  oldPrice: {fontSize: 13, color: '#aaa', textDecorationLine: 'line-through'},
+  offTag: {backgroundColor: C.greenBg, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 5},
   offTagText: {fontSize: 10, fontWeight: '800', color: C.green},
   right: {alignItems: 'center', gap: 10, marginLeft: 14},
   bigEmoji: {fontSize: 38},
-  bookBtn: {
-    backgroundColor: C.purple,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
+  bookBtn: {backgroundColor: C.purple, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8},
   bookBtnText: {fontSize: 12, fontWeight: '800', color: '#fff'},
+});
+
+// ScrollPromoToast
+const spt = StyleSheet.create({
+  wrapper: {
+    position: 'absolute',
+    bottom: 90,
+    left: 16,
+    right: 16,
+    zIndex: 999,
+    ...Platform.select({
+      ios: {shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 14, shadowOffset: {width: 0, height: 4}},
+      android: {elevation: 12},
+    }),
+  },
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    gap: 10,
+  },
+  emoji: {fontSize: 18},
+  text: {flex: 1, fontSize: 13, fontWeight: '700', color: '#fff'},
+  closeBtn: {},
+  closeText: {fontSize: 15, color: 'rgba(255,255,255,0.65)', fontWeight: '700'},
 });
