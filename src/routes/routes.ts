@@ -2,7 +2,7 @@ import Language from "../screen/Auth/Language";
 import LocationFetcher from "../screen/Auth/LocationFetcher";
 import OTPVerification from "../screen/Auth/OTPVerification";
 import PartnerDocumentsScreen from "../screen/Auth/PartnerDocumentsScreen";
-import PartnerInfoForm from "../screen/Auth/PartnerInfoForm";
+import UserInfoForm from "../screen/Auth/UserInfoForm";
 import PartnerServiceSelectionScreen from "../screen/Auth/PartnerServiceSelectionScreen";
 import PhoneLogin from "../screen/Auth/PhoneLogin";
 import Splash from "../screen/Auth/Splash";
@@ -25,6 +25,9 @@ import ScreenNameEnum from "./screenName.enum"; // ✅ new path
 import BookingDetailsScreen from "../screen/bookingflow/BookingDetailsScreen";
 import PaymentScreen from "../screen/bookingflow/PaymentScreen";
 import FeedbackScreen from "../screen/Feature/FeedbackScreen";
+import AllServicesScreen from "../screen/Feature/AllServicesScreen";
+import ServiceBookingScreen from "../screen/bookingflow/ServiceBookingScreen";
+import ArrivalChargesScreen from "../screen/bookingflow/ArrivalChargesScreen";
 import TabNavigator from "../navigators/TabNavigator";
 
 const _routes = {
@@ -34,7 +37,7 @@ const _routes = {
     { name: ScreenNameEnum.LANGUAGE_SELECT, Component: Language },
     { name: ScreenNameEnum.PhoneLogin, Component: PhoneLogin },
     { name: ScreenNameEnum.OTPVerification, Component: OTPVerification },
-    { name: ScreenNameEnum.PartnerInfoForm, Component: PartnerInfoForm },
+    { name: ScreenNameEnum.UserInfoForm, Component: UserInfoForm },
     { name: ScreenNameEnum.JobDetailsScreen, Component: JobDetailsScreen },
     { name: ScreenNameEnum.NotificationList, Component: NotificationList },
     { name: ScreenNameEnum.JobInvoiceScreen, Component: JobInvoiceScreen },
@@ -51,7 +54,9 @@ const _routes = {
     { name: ScreenNameEnum.PaymentScreen, Component: PaymentScreen },
     { name: ScreenNameEnum.InvoiceScreen, Component: JobInvoiceScreen },
     { name: ScreenNameEnum.Feedback, Component: FeedbackScreen },
-
+    { name: ScreenNameEnum.AllServicesScreen, Component: AllServicesScreen },
+    { name: ScreenNameEnum.ServiceBookingScreen, Component: ServiceBookingScreen },
+    { name: ScreenNameEnum.ArrivalChargesScreen, Component: ArrivalChargesScreen },
   ],
 
   BOTTOM_TAB: [

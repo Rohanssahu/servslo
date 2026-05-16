@@ -1,6 +1,6 @@
 // PartnerServiceSelectionScreen.tsx
 
-import React, {useState, useEffect} from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,18 +13,18 @@ import {
 } from 'react-native';
 import Voice from '@react-native-voice/voice';
 import Tts from 'react-native-tts';
-import {useNavigation} from '@react-navigation/native';
-import {color} from '../../constant';
+import { useNavigation } from '@react-navigation/native';
+import { color } from '../../constant';
 import Icon from '../../component/Icon';
-import {icon} from '../../component/Image';
-import {useLanguage} from '../../language/LanguageContext';
+import { icon } from '../../component/Image';
+import { useLanguage } from '../../language/LanguageContext';
 import languageStrings from '../../language/languageStrings';
-import {hp} from '../../component/utils/Constant';
+import { hp } from '../../component/utils/Constant';
 
 const allServices = [
   'Electrician', 'Plumber', 'Painter', 'House Cleaning', 'AC Repair',
   'Carpenter', 'Gardener', 'Pest Control', 'Driver', 'Cook',
-  
+
 ];
 
 export default function PartnerServiceSelectionScreen() {
@@ -32,7 +32,9 @@ export default function PartnerServiceSelectionScreen() {
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [search, setSearch] = useState('');
   const [filtered, setFiltered] = useState<string[]>(allServices);
-  const {language, setLanguage} = useLanguage();
+  const { lang, toggleLang } = useLanguage();
+
+  const language = lang;
   const strings = languageStrings[language];
 
   const ttsSpeak = (text: string) => {
@@ -94,28 +96,28 @@ export default function PartnerServiceSelectionScreen() {
       {/* Language & TTS Buttons */}
       <TouchableOpacity
         style={styles.languageToggle}
-        onPress={() => setLanguage(language === 'hi' ? 'en' : 'hi')}>
-        <Text style={{color: '#fff', fontWeight: 'bold'}}>
+        onPress={() => { toggleLang() }}>
+        <Text style={{ color: '#fff', fontWeight: 'bold' }}>
           {strings.switchLang}
         </Text>
       </TouchableOpacity>
 
       <TouchableOpacity
         style={styles.speakerIcon}
-        onPress={() =>  ttsSpeak(
+        onPress={() => ttsSpeak(
           'कृपया बताएं आप कौन-कौन से काम करते हैं। आप बोलकर या सर्च करके एक से अधिक काम चुन सकते हैं।'
         )}>
         <Icon
           source={icon.speaker}
           size={28}
-          style={{tintColor: color.purple}}
+          style={{ tintColor: color.purple }}
         />
       </TouchableOpacity>
 
       <View style={styles.card}>
         <Text style={styles.heading}>आप कौन-कौन से काम करते हैं?</Text>
         <Text style={styles.heading}>बोलें या सर्च करें</Text>
-       
+
         {/* Search Input */}
         <TextInput
           placeholder="Search services..."
@@ -126,13 +128,13 @@ export default function PartnerServiceSelectionScreen() {
 
         {/* Voice Input */}
         <TouchableOpacity onPress={handleVoiceStart} style={styles.voiceBtn}>
-          <Icon source={icon.mic} size={20} style={{tintColor: '#fff'}} />
+          <Icon source={icon.mic} size={20} style={{ tintColor: '#fff' }} />
         </TouchableOpacity>
 
         {/* Selected Services with Remove Option */}
         {selectedServices.length > 0 && (
           <>
-           <Text style={styles.label}>चुना गया काम:</Text>
+            <Text style={styles.label}>चुना गया काम:</Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -143,7 +145,7 @@ export default function PartnerServiceSelectionScreen() {
                   <TouchableOpacity
                     onPress={() => removeService(service)}
                     style={styles.removeIcon}>
-                    <Text style={{color: '#fff', fontWeight: 'bold'}}>✕</Text>
+                    <Text style={{ color: '#fff', fontWeight: 'bold' }}>✕</Text>
                   </TouchableOpacity>
                 </View>
               ))}
@@ -151,14 +153,14 @@ export default function PartnerServiceSelectionScreen() {
           </>
         )}
 
-<Text style={styles.label}>कृपया काम चुनें — आप एक से अधिक काम चुन सकते हैं।</Text>
+        <Text style={styles.label}>कृपया काम चुनें — आप एक से अधिक काम चुन सकते हैं।</Text>
 
         <FlatList
           data={filtered}
           keyExtractor={item => item}
           numColumns={3}
-          contentContainerStyle={{paddingBottom: 100}}
-          renderItem={({item}) => (
+          contentContainerStyle={{ paddingBottom: 100 }}
+          renderItem={({ item }) => (
             <TouchableOpacity
               style={[
                 styles.serviceItem,
@@ -189,10 +191,10 @@ export default function PartnerServiceSelectionScreen() {
   );
 }
 const styles = StyleSheet.create({
-  container: {padding: 16, flex: 1, backgroundColor: color.purple},
+  container: { padding: 16, flex: 1, backgroundColor: color.purple },
   card: {
     marginTop: hp(10),
-    height:hp(70),
+    height: hp(70),
     backgroundColor: '#fff',
     borderRadius: 16,
     paddingVertical: 20,
@@ -202,8 +204,8 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOpacity: 0.1,
     shadowRadius: 10,
-    shadowOffset: {width: 0, height: 4},
-    
+    shadowOffset: { width: 0, height: 4 },
+
   },
   heading: {
     fontSize: 20,
@@ -255,7 +257,7 @@ const styles = StyleSheet.create({
   selectedScroll: {
     flexDirection: 'row',
     marginBottom: 10,
-    height:70
+    height: 70
   },
   selectedBadge: {
     backgroundColor: color.purple,
@@ -266,7 +268,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  selectedText: {color: '#fff', marginRight: 6},
+  selectedText: { color: '#fff', marginRight: 6 },
   removeIcon: {
     backgroundColor: '#d32f2f',
     borderRadius: 10,
@@ -288,7 +290,7 @@ const styles = StyleSheet.create({
     backgroundColor: color.purple,
   },
   button: {
-    backgroundColor:'#fff',
+    backgroundColor: '#fff',
     paddingVertical: 14,
     paddingHorizontal: 32,
     borderRadius: 10,

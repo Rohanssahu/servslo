@@ -1,58 +1,121 @@
-// src/screens/BookingTrackScreen.tsx
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Linking, Platform, Alert, ScrollView, TextInput } from 'react-native';
+import React, {useEffect, useMemo, useRef, useState} from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Linking,
+  Platform,
+  Alert,
+  ScrollView,
+  Animated,
+  StatusBar,
+  SafeAreaView,
+} from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
-import { getBooking, updateStatus, verifyOTP, completeJob, Booking, BookingStatus, LatLng } from '../../services/api';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { onLocation, startFakeLocation, stopFakeLocation } from '../../services/socket';
+import {
+  getBooking,
+  updateStatus,
+  completeJob,
+  Booking,
+  BookingStatus,
+  LatLng,
+} from '../../services/api';
+import {onLocation, startFakeLocation, stopFakeLocation} from '../../services/socket';
 import LiveTrackingMap from '../bookingflow/LiveTrackingMap';
-import OTPModal from '../bookingflow/OTPModal';
 import ScreenNameEnum from '../../routes/screenName.enum';
+import SpeakerButton from '../../component/SpeakerButton';
 
-
-const BRAND = {
-  grad: ['#6E39F7', '#8E57FF', '#B78CFF'],
+const C = {
+  grad: ['#6E39F7', '#8E57FF', '#B78CFF'] as string[],
   purple: '#6E39F7',
+  purpleL: '#f3eeff',
   green: '#13B36B',
-  text: '#222',
-  sub: '#666',
-  bg: '#F7F7FB',
+  greenGrad: ['#13B36B', '#0EA65A'] as string[],
+  orange: '#F59E0B',
+  text: '#1a1a2e',
+  sub: '#888',
+  bg: '#F4F3FB',
   card: '#fff',
+  border: '#efefef',
+  red: '#EF4444',
 };
 
+const TIMELINE = [
+  {key: 'ASSIGNED', label: 'Partner Assigned', subLabel: 'Partner ने accept किया', icon: 'checkmark-circle'},
+  {key: 'EN_ROUTE', label: 'On the Way', subLabel: 'आपकी तरफ आ रहा है', icon: 'navigate'},
+  {key: 'ARRIVED', label: 'Partner Arrived', subLabel: 'आपके घर पर पहुँचा', icon: 'location'},
+  {key: 'OTP_VERIFIED', label: 'Service Started', subLabel: 'OTP verify हुआ', icon: 'key'},
+  {key: 'IN_PROGRESS', label: 'In Progress', subLabel: 'Service चल रही है', icon: 'construct'},
+  {key: 'COMPLETED', label: 'Completed', subLabel: 'Service पूरी हो गई 🎉', icon: 'star'},
+];
 
-const kmDistance = (a: LatLng, b: LatLng) => {
+const STATUS_ORDER: BookingStatus[] = [
+  'SEARCHING', 'ASSIGNED', 'EN_ROUTE', 'ARRIVED', 'OTP_VERIFIED', 'IN_PROGRESS', 'COMPLETED',
+];
+
+const km = (a: LatLng, b: LatLng) => {
   const R = 6371;
   const dLat = ((b.latitude - a.latitude) * Math.PI) / 180;
   const dLon = ((b.longitude - a.longitude) * Math.PI) / 180;
   const lat1 = (a.latitude * Math.PI) / 180;
   const lat2 = (b.latitude * Math.PI) / 180;
-  const x = Math.sin(dLat / 2) ** 2 + Math.sin(dLon / 2) ** 2 * Math.cos(lat1) * Math.cos(lat2);
-  const c = 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
-  return R * c;
+  const x =
+    Math.sin(dLat / 2) ** 2 +
+    Math.sin(dLon / 2) ** 2 * Math.cos(lat1) * Math.cos(lat2);
+  return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
 };
-const minutesETA = (km: number, avgSpeedKmph = 22) => Math.max(1, Math.round((km / avgSpeedKmph) * 60));
+const eta = (d: number) => Math.max(1, Math.round((d / 22) * 60));
 
-export default function BookingTrackScreen({ route, navigation }) {
-  const { bookingId } = route.params;
+function PulseDot() {
+  const anim = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(anim, {toValue: 1.8, duration: 700, useNativeDriver: true}),
+        Animated.timing(anim, {toValue: 1, duration: 700, useNativeDriver: true}),
+      ]),
+    ).start();
+  }, []);
+  return (
+    <View style={{width: 22, height: 22, alignItems: 'center', justifyContent: 'center'}}>
+      <Animated.View
+        style={{
+          position: 'absolute',
+          width: 20,
+          height: 20,
+          borderRadius: 10,
+          backgroundColor: C.orange + '55',
+          transform: [{scale: anim}],
+        }}
+      />
+      <View style={{width: 10, height: 10, borderRadius: 5, backgroundColor: C.orange}} />
+    </View>
+  );
+}
+
+export default function BookingTrackScreen({route, navigation}: any) {
+  const {bookingId} = route.params;
   const [booking, setBooking] = useState<Booking | null>(null);
   const [status, setStatus] = useState<BookingStatus>('ASSIGNED');
   const [partnerLoc, setPartnerLoc] = useState<LatLng | null>(null);
-  const [otpInput, setOtpInput] = useState('');
-  const mapRef = useRef(null);
+  const sheetAnim = useRef(new Animated.Value(0)).current;
 
-  // Load booking and start mock realtime
+  useEffect(() => {
+    Animated.timing(sheetAnim, {toValue: 1, duration: 400, useNativeDriver: true}).start();
+  }, []);
+
   useEffect(() => {
     let unsub: (() => void) | null = null;
     (async () => {
       const b = await getBooking(bookingId);
       setBooking(b);
-      setStatus(b.status === 'SEARCHING' ? 'ASSIGNED' : b.status); // demo: assume already assigned
+      setStatus(b.status === 'SEARCHING' ? 'ASSIGNED' : b.status);
       setPartnerLoc(b.pickup);
       startFakeLocation(b.pickup, b.drop);
-      unsub = onLocation((loc) => setPartnerLoc(loc));
+      unsub = onLocation(loc => setPartnerLoc(loc));
     })();
     return () => {
       stopFakeLocation();
@@ -60,283 +123,533 @@ export default function BookingTrackScreen({ route, navigation }) {
     };
   }, [bookingId]);
 
-  // Status changes based on distance (auto ARRIVED)
   useEffect(() => {
     if (!booking || !partnerLoc) return;
-    if ((status === 'ASSIGNED' || status === 'EN_ROUTE') && booking.partner) updateStatus('EN_ROUTE').then(() => setStatus('EN_ROUTE'));
-
-    const d = kmDistance(partnerLoc, booking.drop);
+    if (status === 'ASSIGNED' || status === 'EN_ROUTE') {
+      updateStatus('EN_ROUTE').then(() => setStatus('EN_ROUTE'));
+    }
+    const d = km(partnerLoc, booking.drop);
     if (d < 0.08 && !['ARRIVED', 'OTP_VERIFIED', 'IN_PROGRESS', 'COMPLETED'].includes(status)) {
       updateStatus('ARRIVED').then(() => setStatus('ARRIVED'));
     }
   }, [partnerLoc, booking, status]);
 
-  const distanceKm = useMemo(() => (partnerLoc && booking ? kmDistance(partnerLoc, booking.drop) : 0), [partnerLoc, booking]);
-  const etaMin = useMemo(() => minutesETA(distanceKm), [distanceKm]);
-
-  const callPartner = () => {
-    if (!booking?.partner?.phone) return;
-    Linking.openURL(`tel:${booking.partner.phone.replace(/\s/g, '')}`);
-  };
-
-  const openInMaps = () => {
-    if (!booking) return;
-    const { latitude, longitude } = booking.drop;
-    const label = encodeURIComponent('Customer Location');
-    const url = Platform.select({
-      ios: `http://maps.apple.com/?daddr=${latitude},${longitude}&dirflg=d`,
-      android: `google.navigation:q=${latitude},${longitude}`,
-    }) || '';
-    Linking.openURL(url).catch(() => {
-      Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}&travelmode=driving&dir_action=navigate&destination_place_id=${label}`);
-    });
-  };
-
-  const verifyOtpAction = async () => {
-    if (!booking) return;
-    const ok = true
-    if (ok) {
+  useEffect(() => {
+    if (status !== 'ARRIVED') return;
+    const t = setTimeout(() => {
       setStatus('OTP_VERIFIED');
       setTimeout(async () => {
         await updateStatus('IN_PROGRESS');
         setStatus('IN_PROGRESS');
       }, 5000);
-      // demo auto complete
       setTimeout(async () => {
         await completeJob();
         setStatus('COMPLETED');
       }, 10000);
-    } else {
-      Alert.alert('गलत OTP', 'कृपया सही 4-अंकों का OTP दर्ज करें।');
-    }
-  };
-  
-  useEffect(() => {
-    let timer: any;
-
-    if (status === "ARRIVED") {
-      timer = setTimeout(() => {
-        verifyOtpAction();
-      }, 7000); // 7000 ms = 7 sec
-    }
-
-    return () => {
-      if (timer) clearTimeout(timer);
-    };
+    }, 7000);
+    return () => clearTimeout(t);
   }, [status]);
 
-
-  // Navigate to Payment after completed
   useEffect(() => {
-    if (status === 'COMPLETED' && booking) {
-      const amount = booking.baseFare + booking.taxes - booking.discount;
-      navigation.replace(ScreenNameEnum.PaymentScreen, { bookingId, amount });
+    if (status === 'COMPLETED') {
+      setTimeout(() => {
+        navigation.replace(ScreenNameEnum.Feedback, {bookingId});
+      }, 2500);
     }
-  }, [status, booking, bookingId, navigation]);
+  }, [status]);
+
+  const distKm = useMemo(
+    () => (partnerLoc && booking ? km(partnerLoc, booking.drop) : 0),
+    [partnerLoc, booking],
+  );
+  const etaMin = useMemo(() => eta(distKm), [distKm]);
+
+  const callPartner = () => {
+    if (booking?.partner?.phone) Linking.openURL(`tel:${booking.partner.phone}`);
+  };
+  const openMaps = () => {
+    if (!booking) return;
+    const {latitude, longitude} = booking.drop;
+    const url =
+      Platform.OS === 'ios'
+        ? `http://maps.apple.com/?daddr=${latitude},${longitude}&dirflg=d`
+        : `google.navigation:q=${latitude},${longitude}`;
+    Linking.openURL(url).catch(() => {});
+  };
+
+  const currentIdx = STATUS_ORDER.indexOf(status);
+
+  const trackScriptHi = useMemo(() => {
+    switch (status) {
+      case 'ASSIGNED':
+        return `आपकी booking confirm हो गई है! एक expert partner आपकी service के लिए assign हो गया है। थोड़ी देर में वो आपकी तरफ निकलेगा। OTP तैयार रखें।`;
+      case 'EN_ROUTE':
+        return `आपका partner आपकी तरफ आ रहा है। लगभग ${etaMin} मिनट में पहुँचेगा। घर पर रहें और दरवाज़ा खुला रखें।`;
+      case 'ARRIVED':
+        return `आपका partner आपके घर पहुँच गया है! अपना OTP उन्हें बताएं ताकि service शुरू हो सके।`;
+      case 'OTP_VERIFIED':
+        return `OTP verify हो गया। Service अभी शुरू होने वाली है। Professional काम शुरू करेंगे।`;
+      case 'IN_PROGRESS':
+        return `Service चल रही है। Professional अपना काम कर रहे हैं। कृपया आसपास रहें और ज़रूरत पड़ने पर मदद करें।`;
+      case 'COMPLETED':
+        return `बहुत बढ़िया! Service पूरी हो गई। हम आशा करते हैं कि आपको service अच्छी लगी। अब feedback दें और हमें बताएं कैसा अनुभव रहा।`;
+      default:
+        return `Partner ढूंढा जा रहा है। कृपया थोड़ी प्रतीक्षा करें।`;
+    }
+  }, [status, etaMin]);
+
+  const trackScriptEn = useMemo(() => {
+    switch (status) {
+      case 'ASSIGNED':
+        return `Your booking is confirmed! An expert partner has been assigned for your service. They will head towards you shortly. Please keep your OTP ready.`;
+      case 'EN_ROUTE':
+        return `Your partner is on the way and will arrive in approximately ${etaMin} minutes. Please stay home and keep the door accessible.`;
+      case 'ARRIVED':
+        return `Your partner has arrived at your home! Please share your OTP with them to start the service.`;
+      case 'OTP_VERIFIED':
+        return `OTP verified successfully. The service is about to begin. Your professional will start working now.`;
+      case 'IN_PROGRESS':
+        return `Your service is currently in progress. The professional is working. Please stay nearby in case they need assistance.`;
+      case 'COMPLETED':
+        return `Service completed successfully! We hope you enjoyed the experience. Please share your feedback so we can serve you better.`;
+      default:
+        return `Searching for a nearby partner. Please wait a moment.`;
+    }
+  }, [status, etaMin]);
 
   const statusLabel = useMemo(() => {
     switch (status) {
-      case 'ASSIGNED': return 'Partner assigned';
-      case 'EN_ROUTE': return 'On the way';
-      case 'ARRIVED': return 'Arrived at your location';
-      case 'OTP_VERIFIED': return 'OTP verified';
-      case 'IN_PROGRESS': return 'Service in progress';
-      case 'COMPLETED': return 'Job completed';
-      default: return 'Searching';
+      case 'ASSIGNED': return '✓ Partner Assigned';
+      case 'EN_ROUTE': return `🚗 ${etaMin} min में पहुँचेगा`;
+      case 'ARRIVED': return '📍 Partner आपके घर पर है!';
+      case 'OTP_VERIFIED': return '🔑 OTP Verified';
+      case 'IN_PROGRESS': return '🔧 Service चल रही है';
+      case 'COMPLETED': return '✅ Service पूरी हो गई!';
+      default: return 'Searching...';
     }
-  }, [status]);
+  }, [status, etaMin]);
 
-  if (!booking || !partnerLoc) return null;
+  if (!booking || !partnerLoc) {
+    return (
+      <View style={s.loadingBox}>
+        <Ionicons name="map" size={48} color={C.purple} />
+        <Text style={s.loadingText}>Map load हो रहा है...</Text>
+      </View>
+    );
+  }
 
+  const showMap = ['ASSIGNED', 'EN_ROUTE', 'ARRIVED'].includes(status);
 
-  
   return (
-    <View style={styles.container}>
-    {(status === 'ASSIGNED' || status === 'EN_ROUTE' || status === 'ARRIVED') && (
-  <LiveTrackingMap partnerLoc={partnerLoc} drop={booking.drop} onMapRef={(r) => (r ? r : null)} style={styles.map} />
-)}
+    <View style={s.container}>
+      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
 
-{status === 'OTP_VERIFIED' && (
-  <View style={styles.centerBox}>
-    <Ionicons name="hourglass" size={50} color={BRAND.purple} />
-    <Text style={styles.bigText}>Waiting for partner to start job...</Text>
-  </View>
-)}
+      {/* Map / Status visual */}
+      {showMap ? (
+        <LiveTrackingMap
+          partnerLoc={partnerLoc}
+          drop={booking.drop}
+          onMapRef={() => {}}
+          style={s.map}
+        />
+      ) : (
+        <LinearGradient colors={C.grad} style={s.statusScreen}>
+          <View style={s.statusIconWrap}>
+            {status === 'IN_PROGRESS' || status === 'OTP_VERIFIED' ? (
+              <Ionicons name="construct" size={60} color="#fff" />
+            ) : (
+              <Ionicons name="checkmark-circle" size={70} color="#fff" />
+            )}
+          </View>
+          <Text style={s.statusScreenText}>{statusLabel}</Text>
+          {status === 'IN_PROGRESS' && (
+            <Text style={s.statusScreenSub}>Professional आपकी service कर रहा है</Text>
+          )}
+        </LinearGradient>
+      )}
 
-{status === 'IN_PROGRESS' && (
-  <View style={styles.centerBox}>
-    <Ionicons name="construct" size={60} color={BRAND.green} style={{ transform: [{ rotate: '30deg' }] }} />
-    <Text style={styles.bigText}>Partner is working...</Text>
-  </View>
-)}
-
-{status === 'COMPLETED' && (
-  <View style={styles.centerBox}>
-    <Ionicons name="checkmark-circle" size={60} color="green" />
-    <Text style={styles.bigText}>Job Completed 🎉</Text>
-  </View>
-)}
-
-      {/* Banner */}
-      <LinearGradient colors={BRAND.grad} start={{ x: 0.1, y: 0 }} end={{ x: 1, y: 1 }} style={styles.banner}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Ionicons name="time" size={18} color="#fff" />
-          <Text style={styles.bannerEta}>  {etaMin} min • {distanceKm.toFixed(1)} km</Text>
+      {/* ETA Overlay on Map */}
+      {showMap && (
+        <View style={s.etaOverlay}>
+          <View style={s.etaPill}>
+            <Ionicons name="time" size={14} color={C.purple} />
+            <Text style={s.etaText}>
+              {etaMin} min • {distKm.toFixed(1)} km
+            </Text>
+          </View>
+          <View style={[s.statusPill, {backgroundColor: status === 'ARRIVED' ? C.green : C.orange}]}>
+            {status === 'EN_ROUTE' && <PulseDot />}
+            <Text style={s.statusPillText}>{statusLabel}</Text>
+          </View>
         </View>
-        <Text style={styles.bannerStatus}>{statusLabel}</Text>
-        {status === 'ARRIVED' &&
-        <>
-        <Text style={[styles.bannerEta,{fontSize:16}]}>Share Otp With Service Partner</Text>
-        <View style={styles.badge}>
-                          <Text style={styles.otp}>{4892}</Text>
-                        </View>
-                        </>
-                        }
+      )}
 
-      </LinearGradient>
+      {/* Back button overlay */}
+      <TouchableOpacity
+        style={s.backBtn}
+        onPress={() => navigation.goBack()}
+        activeOpacity={0.8}>
+        <Ionicons name="arrow-back" size={20} color={C.text} />
+      </TouchableOpacity>
 
       {/* Bottom Sheet */}
-      <View style={styles.sheet}>
-        
-        <ScrollView contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
+      <Animated.View
+        style={[
+          s.sheet,
+          {
+            transform: [
+              {
+                translateY: sheetAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [200, 0],
+                }),
+              },
+            ],
+          },
+        ]}>
+        {/* Handle */}
+        <View style={s.handle} />
 
-            
-                        
-          <View style={styles.rowBetween}>
-            <Text style={styles.title}>{booking.serviceName}</Text>
-            <View style={styles.badgeNow}><Text style={styles.badgeNowText}>NOW</Text></View>
+        {/* OTP Card */}
+        {status === 'ARRIVED' && (
+          <View style={s.otpCard}>
+            <View style={s.otpLeft}>
+              <Text style={s.otpTitle}>Partner पहुँच गया!</Text>
+              <Text style={s.otpSub}>यह OTP share करें service शुरू करने के लिए</Text>
+            </View>
+            <View style={s.otpBox}>
+              <Text style={s.otpCode}>4892</Text>
+              <Text style={s.otpLabel}>OTP</Text>
+            </View>
           </View>
-          <Text style={styles.addr}>{booking.address}</Text>
+        )}
 
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={s.sheetScroll}>
+          {/* Service title + booking id */}
+          <View style={s.sheetHeader}>
+            <View>
+              <Text style={s.sheetTitle}>{booking.serviceName}</Text>
+              <Text style={s.sheetId}>#{bookingId}</Text>
+            </View>
+            <View style={s.sheetHeaderRight}>
+              <View style={s.liveBadge}>
+                <View style={s.liveDot} />
+                <Text style={s.liveText}>LIVE</Text>
+              </View>
+              <SpeakerButton scriptHi={trackScriptHi} scriptEn={trackScriptEn} />
+            </View>
+          </View>
+
+          <View style={s.addrRow}>
+            <Ionicons name="location-outline" size={13} color={C.sub} />
+            <Text style={s.addrText} numberOfLines={1}>
+              {booking.address}
+            </Text>
+          </View>
+
+          {/* Partner Card */}
           {booking.partner && (
-            <View style={styles.partnerCard}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <View style={styles.avatar}>
-                  <Ionicons name="person" size={22} color="#fff" />
-                </View>
-                <View style={{ marginLeft: 10 }}>
-                  <Text style={styles.partnerName}>{booking.partner.name}</Text>
-                  <Text style={styles.partnerMeta}>
-                    ⭐ {booking.partner.rating.toFixed(2)}  •  {booking.partner.vehicle}
-                  </Text>
-                </View>
+            <View style={s.partnerCard}>
+              <LinearGradient colors={C.grad} style={s.avatar}>
+                <Text style={s.avatarText}>{booking.partner.name.charAt(0)}</Text>
+              </LinearGradient>
+              <View style={s.partnerInfo}>
+                <Text style={s.partnerName}>{booking.partner.name}</Text>
+                <Text style={s.partnerMeta}>
+                  ⭐ {booking.partner.rating.toFixed(1)} • {booking.partner.vehicle}
+                </Text>
               </View>
-              <View style={{ flexDirection: 'row', gap: 10 }}>
-                <TouchableOpacity style={styles.iconBtn} onPress={callPartner}>
-                  <Ionicons name="call" size={18} color="#fff" />
+              <View style={s.partnerActions}>
+                <TouchableOpacity style={s.iconBtn} onPress={callPartner} activeOpacity={0.8}>
+                  <Ionicons name="call" size={17} color="#fff" />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.iconBtn} onPress={openInMaps}>
-                  <Ionicons name="navigate" size={18} color="#fff" />
+                <TouchableOpacity style={s.iconBtnOutline} onPress={openMaps} activeOpacity={0.8}>
+                  <Ionicons name="navigate-outline" size={17} color={C.purple} />
                 </TouchableOpacity>
               </View>
-             
             </View>
           )}
 
-          {/* Timeline */}
-          <View style={styles.timeline}>
-            {[
-              { key: 'ASSIGNED', label: 'Partner Accepted' },
-              { key: 'EN_ROUTE', label: 'On the Way' },
-              { key: 'ARRIVED', label: 'Arrived' },
-              { key: 'OTP_VERIFIED', label: 'Started Job' },
-              { key: 'IN_PROGRESS', label: 'In Progress' },
-              { key: 'COMPLETED', label: 'Job Completed' },
-            ].map((it) => {
-              const active = activeFrom(status, it.key as BookingStatus);
+          {/* Vertical Timeline */}
+          <View style={s.timeline}>
+            {TIMELINE.map((item, i) => {
+              const itemIdx = STATUS_ORDER.indexOf(item.key as BookingStatus);
+              const done = itemIdx <= currentIdx;
+              const isCurrent = itemIdx === currentIdx;
+              const isLast = i === TIMELINE.length - 1;
               return (
-                <View key={it.key} style={styles.timelineRow}>
-                  <View style={[styles.dot, active && styles.dotActive]} />
-                  <Text style={[styles.timelineText, active && styles.timelineTextActive]}>{it.label}</Text>
+                <View key={item.key} style={s.timelineRow}>
+                  {/* Left: dot + line */}
+                  <View style={s.timelineLeft}>
+                    <View
+                      style={[
+                        s.tlDot,
+                        done && s.tlDotDone,
+                        isCurrent && s.tlDotCurrent,
+                      ]}>
+                      <Ionicons
+                        name={item.icon as any}
+                        size={12}
+                        color={done ? '#fff' : '#ccc'}
+                      />
+                    </View>
+                    {!isLast && (
+                      <View style={[s.tlLine, done && !isCurrent && s.tlLineDone]} />
+                    )}
+                  </View>
+                  {/* Right: text */}
+                  <View style={s.timelineContent}>
+                    <Text
+                      style={[
+                        s.tlLabel,
+                        done && s.tlLabelDone,
+                        isCurrent && s.tlLabelCurrent,
+                      ]}>
+                      {item.label}
+                    </Text>
+                    {isCurrent && (
+                      <Text style={s.tlSubLabel}>{item.subLabel}</Text>
+                    )}
+                  </View>
                 </View>
               );
             })}
           </View>
-
-   <View  style={{ height:30}}/>
         </ScrollView>
-
-        {/* Status CTA */}
-    
-      </View>
-
+      </Animated.View>
     </View>
   );
 }
 
+const SHEET_RADIUS = 22;
 
+const s = StyleSheet.create({
+  container: {flex: 1, backgroundColor: C.bg},
+  loadingBox: {flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16},
+  loadingText: {fontSize: 16, color: C.sub, fontWeight: '600'},
 
-function activeFrom(current: BookingStatus, item: BookingStatus) {
-  const order: BookingStatus[] = ['SEARCHING', 'ASSIGNED', 'EN_ROUTE', 'ARRIVED', 'OTP_VERIFIED', 'IN_PROGRESS', 'COMPLETED'];
-  return order.indexOf(current) >= order.indexOf(item);
-}
-
-const SHEET_RADIUS = 18;
-
-const styles = StyleSheet.create({
-  centerBox: {
+  map: {flex: 1},
+  statusScreen: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 40,
   },
-  bigText: {
-    marginTop: 16,
-    fontSize: 18,
-    fontWeight: '700',
-    color: BRAND.text,
+  statusIconWrap: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
   },
-  
-  badge: { marginTop: 10, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, alignItems:'center',justifyContent:'center',
-    borderWidth: 1, borderColor: '#E5DEFF', backgroundColor: '#F7F3FF' },
-  otp: { color: BRAND.purple, fontSize: 24, fontWeight: '900', letterSpacing: 3 },
-  container: { flex: 1, backgroundColor: BRAND.bg },
-  map: { flex: 1 },
-  banner: {
+  statusScreenText: {
+    color: '#fff',
+    fontSize: 22,
+    fontWeight: '900',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  statusScreenSub: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 14,
+    textAlign: 'center',
+  },
+
+  etaOverlay: {
     position: 'absolute',
-    top:50, left: 14, right: 14,
-    borderRadius: 14, padding: 12,
-    elevation: 5, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 8, shadowOffset: { width: 0, height: 2 },
+    top: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) + 56 : 70,
+    left: 14,
+    right: 14,
+    gap: 8,
   },
-  bannerEta: { color: '#fff', fontWeight: '700' },
-  bannerStatus: { color: '#fff', marginTop: 4, fontSize: 15 },
+  etaPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: C.card,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    alignSelf: 'flex-start',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    shadowOffset: {width: 0, height: 2},
+  },
+  etaText: {fontSize: 13, fontWeight: '800', color: C.purple},
+  statusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    alignSelf: 'flex-start',
+    elevation: 5,
+  },
+  statusPillText: {fontSize: 12, fontWeight: '800', color: '#fff'},
+
+  backBtn: {
+    position: 'absolute',
+    top: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) + 12 : 16,
+    left: 14,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: C.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    shadowOffset: {width: 0, height: 2},
+  },
+
   sheet: {
-    position: 'absolute', left: 0, right: 0, bottom: 0,
-    backgroundColor: '#fff',
-    borderTopLeftRadius: SHEET_RADIUS, borderTopRightRadius: SHEET_RADIUS,
-    maxHeight: '60%', paddingHorizontal: 14, paddingTop: 10,
-    elevation: 20, shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 14, shadowOffset: { width: 0, height: -2 },
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: C.card,
+    borderTopLeftRadius: SHEET_RADIUS,
+    borderTopRightRadius: SHEET_RADIUS,
+    maxHeight: '58%',
+    elevation: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    shadowOffset: {width: 0, height: -4},
   },
-  rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  title: { fontSize: 18, fontWeight: '800', color: BRAND.text },
-  addr: { color: BRAND.sub, marginTop: 4 },
-  badgeNow: { backgroundColor: '#FFE5F2', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  badgeNowText: { color: '#E91E63', fontWeight: '700', fontSize: 12 },
+  handle: {
+    width: 36,
+    height: 4,
+    backgroundColor: '#D0D0D8',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginTop: 10,
+    marginBottom: 4,
+  },
+
+  otpCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0FDF4',
+    borderRadius: 14,
+    padding: 14,
+    marginHorizontal: 14,
+    marginTop: 8,
+    borderWidth: 1.5,
+    borderColor: C.green + '44',
+    gap: 12,
+  },
+  otpLeft: {flex: 1},
+  otpTitle: {fontSize: 14, fontWeight: '800', color: C.green, marginBottom: 3},
+  otpSub: {fontSize: 11, color: C.sub, lineHeight: 15},
+  otpBox: {
+    backgroundColor: C.card,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: C.green,
+  },
+  otpCode: {
+    fontSize: 26,
+    fontWeight: '900',
+    color: C.purple,
+    letterSpacing: 4,
+  },
+  otpLabel: {fontSize: 10, color: C.sub, fontWeight: '600', marginTop: 2},
+
+  sheetScroll: {paddingHorizontal: 14, paddingTop: 12, paddingBottom: 24},
+  sheetHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 5,
+  },
+  sheetHeaderRight: {alignItems: 'flex-end', gap: 8},
+  sheetTitle: {fontSize: 18, fontWeight: '900', color: C.text},
+  sheetId: {fontSize: 11, color: C.sub, marginTop: 2},
+  liveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#FFF1F2',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+  },
+  liveDot: {width: 7, height: 7, borderRadius: 3.5, backgroundColor: C.red},
+  liveText: {fontSize: 11, color: C.red, fontWeight: '800'},
+
+  addrRow: {flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 14},
+  addrText: {flex: 1, fontSize: 12, color: C.sub},
 
   partnerCard: {
-    marginTop: 14, backgroundColor: BRAND.card, borderRadius: 14, padding: 12,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    borderWidth: 1, borderColor: '#EFEFF5',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: C.purpleL,
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 16,
+    gap: 10,
   },
-  avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: BRAND.purple, alignItems: 'center', justifyContent: 'center' },
-  partnerName: { fontWeight: '800', color: BRAND.text, fontSize: 15 },
-  partnerMeta: { color: BRAND.sub, marginTop: 2 },
-  iconBtn: { backgroundColor: BRAND.purple, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  avatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {fontSize: 20, fontWeight: '900', color: '#fff'},
+  partnerInfo: {flex: 1},
+  partnerName: {fontSize: 14, fontWeight: '800', color: C.text},
+  partnerMeta: {fontSize: 12, color: C.sub, marginTop: 2},
+  partnerActions: {flexDirection: 'row', gap: 8},
+  iconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: C.purple,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconBtnOutline: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: C.purple,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 
-  timeline: { marginTop: 14, paddingVertical: 8 },
-  timelineRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 6 },
-  dot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#D6D6E2', marginRight: 8 },
-  dotActive: { backgroundColor: BRAND.green },
-  timelineText: { color: '#9BA0B3' },
-  timelineTextActive: { color: BRAND.text, fontWeight: '600' },
-
-  billCard: { marginTop: 14, backgroundColor: '#fff', borderRadius: 14, padding: 12, borderWidth: 1, borderColor: '#EFEFF5' },
-  billTitle: { fontWeight: '800', color: BRAND.text, marginBottom: 8 },
-  line: { flexDirection: 'row', justifyContent: 'space-between', marginVertical: 6 },
-  lineLabel: { color: BRAND.sub },
-  lineValue: { color: BRAND.text, fontWeight: '600' },
-  sep: { height: 1, backgroundColor: '#EEE', marginVertical: 6 },
-
-  bottomCta: { position: 'absolute', left: 14, right: 14, bottom: 14 },
-  bottomCtaBg: { borderRadius: 14, alignItems: 'center', paddingVertical: 14 },
-  bottomCtaText: { color: '#fff', fontWeight: '800', fontSize: 16 },
+  timeline: {paddingLeft: 4},
+  timelineRow: {flexDirection: 'row', alignItems: 'flex-start'},
+  timelineLeft: {alignItems: 'center', marginRight: 12, width: 24},
+  tlDot: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#E8E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tlDotDone: {backgroundColor: C.green},
+  tlDotCurrent: {backgroundColor: C.orange},
+  tlLine: {width: 2, flex: 1, minHeight: 24, backgroundColor: '#E8E8F0', marginVertical: 2},
+  tlLineDone: {backgroundColor: C.green},
+  timelineContent: {flex: 1, paddingBottom: 16, paddingTop: 2},
+  tlLabel: {fontSize: 13, color: '#AAA', fontWeight: '600'},
+  tlLabelDone: {color: C.text, fontWeight: '700'},
+  tlLabelCurrent: {color: C.orange, fontWeight: '800'},
+  tlSubLabel: {fontSize: 11, color: C.sub, marginTop: 2},
 });

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, {useEffect, useRef, useState} from 'react';
 import {
   SafeAreaView,
   View,
@@ -10,297 +10,490 @@ import {
   Image,
   Dimensions,
   Platform,
-} from "react-native";
-import ScreenNameEnum from "../../routes/screenName.enum";
-import LinearGradient from "react-native-linear-gradient";
-import BottomSheet from "@gorhom/bottom-sheet";
-import ServiceBottomSheet, { ServiceBottomSheetRef } from "../Feature/ServiceBottomSheet";
-import QuickServiceCards from "../Feature/QuickServiceCard";
-import SearchBar from "../Feature/SearchBar";
-import { useIsFocused } from "@react-navigation/native";
+  TextInput,
+} from 'react-native';
+import ScreenNameEnum from '../../routes/screenName.enum';
+import LinearGradient from 'react-native-linear-gradient';
+import ServiceBottomSheet, {
+  ServiceBottomSheetRef,
+} from '../Feature/ServiceBottomSheet';
+import {useIsFocused} from '@react-navigation/native';
+import SpeakerButton from '../../component/SpeakerButton';
 
-const { width } = Dimensions.get("window");
-const CARD_WIDTH = Math.round((width - 64) / 3); // three small promo cards inside a horizontal area
+const {width} = Dimensions.get('window');
+const BOOKED_W = 158;
 
-export default function HomeScreen({navigation}) {
+// ─── Static data (swap with API responses when ready) ───────────────────────
 
+const QUICK_SERVICES = [
+  {
+    label: 'Electrician',
+    emoji: '⚡',
+    desc: 'Wiring & repairs',
+    rating: '4.8',
+    basePrice: 199,
+  },
+  {
+    label: 'Plumber',
+    emoji: '🔧',
+    desc: 'Leaks, pipes, taps',
+    rating: '4.7',
+    basePrice: 149,
+  },
+  {
+    label: 'Cleaning',
+    emoji: '🧹',
+    desc: 'Full home clean',
+    rating: '4.9',
+    basePrice: 299,
+  },
+  {
+    label: 'AC Repair',
+    emoji: '❄️',
+    desc: 'Service & repair',
+    rating: '4.8',
+    basePrice: 349,
+  },
+  {
+    label: 'Carpenter',
+    emoji: '🪚',
+    desc: 'Furniture, doors',
+    rating: '4.6',
+    basePrice: 249,
+  },
+  {
+    label: 'Painting',
+    emoji: '🖌️',
+    desc: 'Interior & exterior',
+    rating: '4.7',
+    basePrice: 499,
+  },
+  {
+    label: 'Pest Control',
+    emoji: '🐛',
+    desc: 'All pest types',
+    rating: '4.8',
+    basePrice: 599,
+  },
+  {label: 'More', emoji: '➕', desc: '', rating: '4.8', basePrice: 0},
+];
+
+const DEALS = [
+  {time: '60 min', price: '₹149', old: '₹169', off: '11% OFF', label: 'Basic Clean'},
+  {time: '90 min', price: '₹219', old: '₹255', off: '14% OFF', label: 'Deep Clean'},
+  {time: '120 min',price: '₹289', old: '₹320', off: '10% OFF', label: 'Full Home'},
+];
+
+const MOST_BOOKED = [
+  {title: 'Bathroom Deep Clean',    rating: '4.8', reviews: '2.8M', price: '₹519', emoji: '🚿'},
+  {title: '2 Bathroom Cleaning',    rating: '4.8', reviews: '2.8M', price: '₹950', oldPrice: '₹1,038', off: '8% OFF', emoji: '🏠'},
+  {title: 'Washing Machine Clean',  rating: '4.8', reviews: '319K', price: '₹160', emoji: '🫧'},
+];
+
+const SALON_ITEMS = [
+  {label: 'Waxing', emoji: '✨'},
+  {label: 'Facial', emoji: '💆'},
+  {label: 'Manicure', emoji: '💅'},
+  {label: 'Pedicure', emoji: '🦶'},
+];
+const APPLIANCE_ITEMS = [
+  {label: 'AC Service', emoji: '❄️'},
+  {label: 'Washing Machine', emoji: '🫧'},
+  {label: 'Water Purifier', emoji: '💧'},
+  {label: 'Fridge Repair', emoji: '🧊'},
+];
+
+// ────────────────────────────────────────────────────────────────────────────
+
+const HOME_SCRIPT_HI =
+  'नमस्ते! ServSLO में आपका स्वागत है। यहाँ घर बैठे electrician, plumber, cleaning और 50 से ज़्यादा services बुक करें। हमारे verified expert सिर्फ 10 मिनट में आपके घर पहुँचेंगे। आज कौन सी service चाहिए?';
+const HOME_SCRIPT_EN =
+  'Welcome to ServSLO! Book electricians, plumbers, cleaning and 50-plus home services right from home. Our verified experts arrive in just 10 minutes. What service do you need today?';
+
+export default function HomeScreen({navigation}: {navigation: any}) {
   const sheetRef = useRef<ServiceBottomSheetRef>(null);
-
-
   const [searchText, setSearchText] = useState('');
+  const isFocus = useIsFocused();
+
+  useEffect(() => {
+    sheetRef.current?.close();
+  }, [isFocus]);
 
   const handleSearch = () => {
     console.log('Searching for:', searchText);
-    // Here you can filter services or call API
   };
 
-  const isFocus = useIsFocused()
-
-  useEffect(()=>{
-    sheetRef.current?.close()
-  },[isFocus])
   return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.purple} />
-     <LinearGradient
-            colors={['#6E39F7', '#8E57FF', '#B78CFF']}
-            start={{ x: 0.1, y: 0 }}
-            end={{ x: 1, y: 1 }} style={styles.topBar}>
-    
+    <SafeAreaView style={s.safe}>
+      <StatusBar
+        translucent
+        backgroundColor="transparent"
+        barStyle="light-content"
+      />
 
+      {/* ── Header ─────────────────────────────────────────────────────── */}
+      <LinearGradient
+        colors={['#6E39F7', '#8E57FF', '#B78CFF']}
+        start={{x: 0.1, y: 0}}
+        end={{x: 1, y: 1}}
+        style={s.header}>
         <TouchableOpacity
-        onPress={()=>{
-          navigation.navigate(ScreenNameEnum.AddressesScreen)
-        }}
-        style={styles.addressBlock}>
-          <Text style={styles.addressLabel}>Address</Text>
-          <Text style={styles.addressText} numberOfLines={1}>
-            404 Applications Numbf Muland Road...
-          </Text>
+          style={s.addressBlock}
+          onPress={() => navigation.navigate(ScreenNameEnum.AddressesScreen)}
+          activeOpacity={0.8}>
+          <Text style={s.addressLabel}>Welcome back 👋</Text>
+          <View style={s.addressRow}>
+            <Text style={s.addressPin}>📍 </Text>
+            <Text style={s.addressText} numberOfLines={1}>
+              Mulund Road, Mumbai...
+            </Text>
+            <Text style={s.chevron}>▾</Text>
+          </View>
         </TouchableOpacity>
 
-        <View style={styles.topButtons}>
+        <View style={s.headerRight}>
           <TouchableOpacity
-          
-          
-          onPress={()=>{
-            
-            navigation.navigate(ScreenNameEnum.ReferralScreen)
-          }}
-          style={styles.earnBtn}>
-            <Text style={styles.earnText}>Earn ₹50</Text>
+            style={s.headerPill}
+            onPress={() => navigation.navigate(ScreenNameEnum.ReferralScreen)}
+            activeOpacity={0.8}>
+            <Text style={s.headerPillText}>🎁 ₹50</Text>
           </TouchableOpacity>
-          <TouchableOpacity 
-          onPress={()=>{
-            navigation.navigate(ScreenNameEnum.WalletScreen)
-          }}
-          style={styles.walletBtn}>
-            <Text style={styles.walletText}>₹0</Text>
+          <TouchableOpacity
+            style={[s.headerPill, s.walletPill]}
+            onPress={() => navigation.navigate(ScreenNameEnum.WalletScreen)}
+            activeOpacity={0.8}>
+            <Text style={s.walletText}>💰 ₹0</Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            style={s.bellBtn}
+            onPress={() => navigation.navigate(ScreenNameEnum.NotificationList)}
+            activeOpacity={0.8}>
+            <Text style={s.bellText}>🔔</Text>
+          </TouchableOpacity>
+          <SpeakerButton
+            scriptHi={HOME_SCRIPT_HI}
+            scriptEn={HOME_SCRIPT_EN}
+            light
+            style={s.speakerMargin}
+          />
         </View>
       </LinearGradient>
-      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        <QuickServiceCards />
-      <SearchBar
-        searchText={searchText}
-        setSearchText={setSearchText}
-        onSearch={handleSearch}
-      />
-        
-        <View style={{flex:1,padding:10}}>
-              {/* Snabbit card */}
-              <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.brand}>ServsLo</Text>
-            <View style={styles.nowBadge}><Text style={styles.nowText}>NOW</Text></View>
+
+      {/* ── Scroll Body ─────────────────────────────────────────────────── */}
+      <ScrollView
+        contentContainerStyle={s.scroll}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled">
+
+        {/* Search ──────────────────────────────────────────────────────── */}
+        <View style={s.searchBox}>
+          <Text style={s.searchIcon}>🔍</Text>
+          <TextInput
+            style={s.searchInput}
+            placeholder="Search plumber, cleaning, AC repair..."
+            placeholderTextColor="#aaa"
+            value={searchText}
+            onChangeText={setSearchText}
+            onSubmitEditing={handleSearch}
+            returnKeyType="search"
+          />
+          {searchText.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchText('')} hitSlop={{top:8,bottom:8,left:8,right:8}}>
+              <Text style={s.clearText}>✕</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Trust Strip ─────────────────────────────────────────────────── */}
+        <View style={s.trustStrip}>
+          {[
+            {icon: '⚡', text: '10-min Response'},
+            {icon: '✅', text: 'Verified Pros'},
+            {icon: '🏠', text: '50K+ Families'},
+          ].map((t, i) => (
+            <View key={i} style={s.trustItem}>
+              <Text style={s.trustEmoji}>{t.icon}</Text>
+              <Text style={s.trustText}>{t.text}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* What do you need? ───────────────────────────────────────────── */}
+        <View style={s.card}>
+          <View style={s.cardTitleRow}>
+            <Text style={s.cardTitle}>What do you need?</Text>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() =>
+                navigation.navigate(ScreenNameEnum.AllServicesScreen, {
+                  category: 'all',
+                  title: 'All Services',
+                })
+              }>
+              <Text style={s.seeAll}>See all →</Text>
+            </TouchableOpacity>
           </View>
-
-          <Text style={styles.arriveText}>Arriving in <Text style={{color: colors.pink}}>⚡ 10 min</Text></Text>
-
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.promoScroll} contentContainerStyle={{paddingVertical: 12}}>
-            {[
-              { time: "60 min", price: "₹149", old: "₹169", off: "11% OFF" },
-              { time: "90 min", price: "₹219", old: "₹255", off: "14% OFF" },
-              { time: "120 min", price: "₹289", old: "₹320", off: "10% OFF" },
-            ].map((p, i) => (
-              <View key={i} style={styles.promoCard}>
-                <View style={styles.offBadge}><Text style={styles.offText}>{p.off}</Text></View>
-                <Text style={styles.promoTime}>{p.time}</Text>
-                <Text style={styles.promoPrice}>{p.price} <Text style={styles.oldPrice}>{p.old}</Text></Text>
-                <TouchableOpacity 
-                
-                
-                onPress={()=>{
-                  sheetRef.current?.open()
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={s.storyList}>
+            {QUICK_SERVICES.map((item, i) => (
+              <TouchableOpacity
+                key={i}
+                style={s.storyItem}
+                onPress={() => {
+                  if (item.label === 'More') {
+                    navigation.navigate(ScreenNameEnum.AllServicesScreen, {
+                      category: 'all',
+                      title: 'All Services',
+                    });
+                  } else {
+                    navigation.navigate(ScreenNameEnum.ServiceBookingScreen, {
+                      service: item,
+                    });
+                  }
                 }}
-                style={styles.bookBtn}><Text style={styles.bookBtnText}>Book</Text></TouchableOpacity>
-              </View>
+                activeOpacity={0.8}>
+                <LinearGradient
+                  colors={['#6E39F7', '#C084FC', '#F0ABFC']}
+                  start={{x: 0, y: 1}}
+                  end={{x: 1, y: 0}}
+                  style={s.storyRing}>
+                  <View style={s.storyInner}>
+                    <Text style={s.storyEmoji}>{item.emoji}</Text>
+                  </View>
+                </LinearGradient>
+                <Text style={s.storyLabel} numberOfLines={2}>
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
             ))}
-            
           </ScrollView>
         </View>
-        {/* Most booked services */}
-<View style={styles.card}>
-  <Text style={styles.sectionTitle}>Most booked services</Text>
-  <ScrollView
-    horizontal
-    showsHorizontalScrollIndicator={false}
-    contentContainerStyle={{ paddingVertical: 12 }}
-  >
-    {[
-      {
-        title: "Intense bathroom cleaning",
-        rating: "4.79",
-        reviews: "2.8M",
-        price: "₹519",
-        image: require("../../assets/images/bathromm.jpeg"),
-      },
-      {
-        title: "Intense cleaning (2 bathrooms)",
-        rating: "4.79",
-        reviews: "2.8M",
-        price: "₹950",
-        oldPrice: "₹1,038",
-        off: "8% OFF",
-        image: require("../../assets/images/bathromm.jpeg"),
-      },
-      {
-        title: "Automatic washing machine cleaning",
-        rating: "4.80",
-        reviews: "319K",
-        price: "₹160",
-        image: require("../../assets/images/bathromm.jpeg"),
-      },
-    ].map((item, index) => (
-      <TouchableOpacity key={index} style={styles.serviceCard}>
-        {item.off && (
-          <View style={styles.discountBadge}>
-            <Text style={styles.discountText}>{item.off}</Text>
+
+        {/* Quick Cleaning Packages ─────────────────────────────────────── */}
+        <View style={s.card}>
+          <View style={s.cardTitleRow}>
+            <Text style={s.cardTitle}>Quick Cleaning</Text>
+            <View style={s.livePill}>
+              <Text style={s.livePillText}>⚡ LIVE</Text>
+            </View>
           </View>
-        )}
-        <Image source={item.image} style={styles.serviceImg} />
-        <Text style={styles.serviceTitle} numberOfLines={2}>
-          {item.title}
-        </Text>
-        <Text style={styles.serviceRating}>
-          ⭐ {item.rating} ({item.reviews})
-        </Text>
-        <Text style={styles.servicePrice}>
-          {item.price}{" "}
-          {item.oldPrice && (
-            <Text style={styles.oldPrice}>{item.oldPrice}</Text>
-          )}
-        </Text>
-      </TouchableOpacity>
-    ))}
-  </ScrollView>
-</View>
+          <Text style={s.cardSub}>Arrives in 10 min · Book instantly</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={s.hPad}>
+            {DEALS.map((d, i) => (
+              <View key={i} style={s.dealCard}>
+                <View style={s.dealBadge}>
+                  <Text style={s.dealBadgeText}>{d.off}</Text>
+                </View>
+                <Text style={s.dealLabel}>{d.label}</Text>
+                <Text style={s.dealTime}>{d.time}</Text>
+                <View style={s.dealPriceRow}>
+                  <Text style={s.dealPrice}>{d.price}</Text>
+                  <Text style={s.dealOld}>{d.old}</Text>
+                </View>
+                <TouchableOpacity
+                  style={s.bookBtnFill}
+                  onPress={() => sheetRef.current?.open()}
+                  activeOpacity={0.8}>
+                  <Text style={s.bookBtnFillText}>Book Now</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
 
-
-             {/* Services */}
-             <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Our Services</Text>
-          <Text style={styles.sectionSub}>Avail one or multiple services in your booking</Text>
-
-          <View style={styles.servicesRow}>
-            <TouchableOpacity style={styles.bigService}>
-              <Text style={styles.bigServiceText}>Everyday{"\n"}Cleaning</Text>
-              <Image source={require("../../assets/images/mop.png")} style={styles.serviceImage} />
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.bigService}>
-              <Text style={styles.bigServiceText}>Weekly{"\n"}Cleaning</Text>
-              <Image source={require("../../assets/images/cleaning.jpg")} style={styles.serviceImage} />
+        {/* Most Booked ─────────────────────────────────────────────────── */}
+        <View style={s.card}>
+          <View style={s.cardTitleRow}>
+            <Text style={s.cardTitle}>Most Booked</Text>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() =>
+                navigation.navigate(ScreenNameEnum.AllServicesScreen, {
+                  category: 'cleaning',
+                  title: 'Most Booked',
+                })
+              }>
+              <Text style={s.seeAll}>See all →</Text>
             </TouchableOpacity>
           </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={s.hPad}>
+            {MOST_BOOKED.map((item, i) => (
+              <TouchableOpacity
+                key={i}
+                style={[s.bookedCard, {width: BOOKED_W}]}
+                onPress={() => sheetRef.current?.open()}
+                activeOpacity={0.85}>
+                {item.off && (
+                  <View style={s.bookedBadge}>
+                    <Text style={s.bookedBadgeText}>{item.off}</Text>
+                  </View>
+                )}
+                <View style={s.bookedEmojiBox}>
+                  <Text style={s.bookedEmoji}>{item.emoji}</Text>
+                </View>
+                <Text style={s.bookedTitle} numberOfLines={2}>{item.title}</Text>
+                <Text style={s.bookedRating}>⭐ {item.rating} ({item.reviews})</Text>
+                <View style={s.bookedFooter}>
+                  <View>
+                    <Text style={s.bookedPrice}>{item.price}</Text>
+                    {item.oldPrice && (
+                      <Text style={s.bookedOldPrice}>{item.oldPrice}</Text>
+                    )}
+                  </View>
+                  <View style={s.addBtn}>
+                    <Text style={s.addBtnText}>+</Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
 
-          <View style={styles.smallServicesRow}>
+        {/* Our Services ───────────────────────────────────────────────── */}
+        <View style={s.card}>
+          <Text style={s.cardTitle}>Our Services</Text>
+          <Text style={s.cardSub}>Multiple services in one booking</Text>
+
+          <View style={s.bigRow}>
+            <TouchableOpacity style={s.bigTile} activeOpacity={0.8}>
+              <Text style={s.bigTileText}>Everyday{'\n'}Cleaning</Text>
+              <Image
+                source={require('../../assets/images/mop.png')}
+                style={s.bigTileImg}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity style={s.bigTile} activeOpacity={0.8}>
+              <Text style={s.bigTileText}>Weekly{'\n'}Cleaning</Text>
+              <Image
+                source={require('../../assets/images/cleaning.jpg')}
+                style={s.bigTileImg}
+              />
+            </TouchableOpacity>
+          </View>
+
+          <View style={s.smallRow}>
             {[
-              { label: "Laundry", img: require("../../assets/images/laundry.jpg") },
-              { label: "Dishwashing", img: require("../../assets/images/laundry.jpg") },
-              { label: "Bathroom", img: require("../../assets/images/laundry.jpg") },
-              { label: "Kitchen Prep", img: require("../../assets/images/laundry.jpg") },
-            ].map((s, i) => (
-              <TouchableOpacity key={i} style={styles.smallService}>
-                <Image source={s.img} style={styles.smallServiceImg} />
-                <Text style={styles.smallServiceLabel}>{s.label}</Text>
+              {label: 'Laundry', emoji: '👕'},
+              {label: 'Dishwashing', emoji: '🍽️'},
+              {label: 'Bathroom', emoji: '🚿'},
+              {label: 'Kitchen', emoji: '🍳'},
+            ].map((item, i) => (
+              <TouchableOpacity key={i} style={s.smallTile} activeOpacity={0.75}>
+                <Text style={s.smallTileEmoji}>{item.emoji}</Text>
+                <Text style={s.smallTileLabel}>{item.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
 
-        {/* Card with rounded image */}
-        <View style={[styles.card, {overflow: "hidden"}]}>
-          <View style={styles.infoRow}>
-            <View style={{flex:1}}>
-              <Text style={styles.infoTitle}>Trained Professional</Text>
-              <Text style={styles.infoDesc}>Equipped with the latest best practices to deliver top-notch services</Text>
+        {/* Salon for Women ────────────────────────────────────────────── */}
+        <View style={s.card}>
+          <View style={s.cardTitleRow}>
+            <Text style={s.cardTitle}>Salon for Women</Text>
+            <TouchableOpacity activeOpacity={0.7}>
+              <Text style={s.seeAll}>See all →</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={s.hPad}>
+            {SALON_ITEMS.map((srv, i) => (
+              <TouchableOpacity
+                key={i}
+                style={s.srvTile}
+                onPress={() => sheetRef.current?.open()}
+                activeOpacity={0.8}>
+                <View style={s.srvEmojiBox}>
+                  <Text style={s.srvEmoji}>{srv.emoji}</Text>
+                </View>
+                <Text style={s.srvLabel}>{srv.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Appliance Repair ───────────────────────────────────────────── */}
+        <View style={s.card}>
+          <View style={s.cardTitleRow}>
+            <Text style={s.cardTitle}>Appliance Repair</Text>
+            <TouchableOpacity activeOpacity={0.7}>
+              <Text style={s.seeAll}>See all →</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={s.hPad}>
+            {APPLIANCE_ITEMS.map((srv, i) => (
+              <TouchableOpacity
+                key={i}
+                style={s.srvTile}
+                onPress={() => sheetRef.current?.open()}
+                activeOpacity={0.8}>
+                <View style={s.applianceEmojiBox}>
+                  <Text style={s.srvEmoji}>{srv.emoji}</Text>
+                </View>
+                <Text style={s.srvLabel}>{srv.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Trust / Professional Card ──────────────────────────────────── */}
+        <View style={[s.card, s.proCard]}>
+          <View style={s.proCardContent}>
+            <Text style={s.proTitle}>Trained Professionals</Text>
+            <Text style={s.proDesc}>
+              Background-verified experts with the best tools and practices
+            </Text>
+            <View style={s.proBadgeRow}>
+              <View style={s.proBadge}>
+                <Text style={s.proBadgeText}>✓ Verified</Text>
+              </View>
+              <View style={s.proBadge}>
+                <Text style={s.proBadgeText}>✓ Insured</Text>
+              </View>
             </View>
-            <Image source={require("../../assets/images/glove.jpg")} style={styles.infoImage} />
           </View>
+          <Image
+            source={require('../../assets/images/glove.jpg')}
+            style={s.proImg}
+          />
         </View>
 
+        <View style={s.bottomSpacer} />
+      </ScrollView>
 
-        {/* Categories Grid */}
-<View style={styles.card}>
-  <View style={styles.categoriesGrid}>
-    {[
-      { label: "Women's Salon", img: require("../../assets/images/cleaning.jpg") },
-      { label: "Men's Salon & Massage", img: require("../../assets/images/cleaning.jpg") },
-      { label: "AC & Appliance Repair", img: require("../../assets/images/cleaning.jpg") },
-      { label: "Cleaning", img: require("../../assets/images/cleaning.jpg") },
-      { label: "Electrician, Plumber & Carpenter", img: require("../../assets/images/cleaning.jpg") },
-      { label: "Native Water Purifier", img: require("../../assets/images/cleaning.jpg") },
-    ].map((cat, idx) => (
-      <TouchableOpacity key={idx} style={styles.categoryItem}>
-        <Image source={cat.img} style={styles.categoryIcon} />
-        <Text style={styles.categoryLabel}>{cat.label}</Text>
-      </TouchableOpacity>
-    ))}
-  </View>
-</View>
-
-{/* Horizontal section - Salon for Women */}
-<View style={styles.card}>
-  <View style={styles.sectionHeader}>
-    <Text style={styles.sectionTitle}>Salon for Women</Text>
-    <Text style={styles.seeAll}>See all</Text>
-  </View>
-  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-    {[
-      { label: "Waxing", img: require("../../assets/images/cleaning.jpg") },
-      { label: "Cleanup", img: require("../../assets/images/cleaning.jpg") },
-      { label: "Manicure", img: require("../../assets/images/cleaning.jpg") },
-    ].map((srv, idx) => (
-      <TouchableOpacity key={idx} style={styles.horizontalCard}>
-        <Image source={srv.img} style={styles.horizontalImg} />
-        <Text style={styles.horizontalLabel}>{srv.label}</Text>
-      </TouchableOpacity>
-    ))}
-  </ScrollView>
-</View>
-
-{/* Horizontal section - Appliance repair */}
-<View style={styles.card}>
-  <View style={styles.sectionHeader}>
-    <Text style={styles.sectionTitle}>Appliance repair & service</Text>
-    <Text style={styles.seeAll}>See all</Text>
-  </View>
-  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-    {[
-      { label: "AC Service and Repair", img: require("../../assets/images/cleaning.jpg") },
-      { label: "Washing Machine Repair", img: require("../../assets/images/cleaning.jpg") },
-      { label: "Water Purifier Repair", img: require("../../assets/images/cleaning.jpg") },
-    ].map((srv, idx) => (
-      <TouchableOpacity key={idx} style={styles.horizontalCard}>
-        <Image source={srv.img} style={styles.horizontalImg} />
-        <Text style={styles.horizontalLabel}>{srv.label}</Text>
-      </TouchableOpacity>
-    ))}
-    
-  </ScrollView>
-</View>
-        <View style={{height: 16}} />
-</View>
-        </ScrollView>
-     
-
-      {/* Floating promo banner above tab */}
+      {/* ── Sticky Promo Banner ─────────────────────────────────────────── */}
       <LinearGradient
-            colors={['#6E39F7', '#8E57FF', '#B78CFF']}
-            start={{ x: 0.1, y: 0 }}
-            end={{ x: 1, y: 1 }}  style={styles.promoBanner}>
-        <View style={styles.promoLeft}>
-          <Image source={require("../../assets/images/glove.jpg")} style={styles.promoIcon} />
-          <View style={{marginLeft: 12}}>
-            <Text style={styles.promoTitle}>Buy STARTER PACK</Text>
-            <Text style={styles.promoTimer}>Valid For 14h: 43m: 49s</Text>
+        colors={['#6E39F7', '#8E57FF', '#B78CFF']}
+        start={{x: 0.1, y: 0}}
+        end={{x: 1, y: 1}}
+        style={s.promoBanner}>
+        <View style={s.promoLeft}>
+          <Image
+            source={require('../../assets/images/glove.jpg')}
+            style={s.promoImg}
+          />
+          <View style={s.promoTextWrap}>
+            <Text style={s.promoTitle}>STARTER PACK</Text>
+            <Text style={s.promoTimer}>⏰ Ends in 14h 43m</Text>
           </View>
         </View>
-        <TouchableOpacity style={styles.promoBuy}>
-          <Text style={styles.promoBuyText}>Buy for ₹149</Text>
+        <TouchableOpacity style={s.promoBuyBtn} activeOpacity={0.8}>
+          <Text style={s.promoBuyText}>Buy ₹149</Text>
         </TouchableOpacity>
       </LinearGradient>
+
       <ServiceBottomSheet
         ref={sheetRef}
         onClose={() => console.log('Sheet closed')}
@@ -309,390 +502,334 @@ export default function HomeScreen({navigation}) {
   );
 }
 
-/* ---------- styles & colors ---------- */
-const colors = {
-  purple: "#5A2EA6",
-  lightPurple: "#f3eef9",
-  cardBg: "#fff",
-  grayText: "#6b6b7b",
-  pink: "#ff2d7a",
-  softBg: "#f6f5fb",
-  pillBg: "#eef3ff",
-  brand: "#ff2d7a",
+// ─── Color tokens ────────────────────────────────────────────────────────────
+const C = {
+  purple: '#4d2b98',
+  purpleL: '#f3eeff',
+  bg: '#f4f3fb',
+  card: '#ffffff',
+  text: '#1a1a2e',
+  sub: '#888888',
+  border: '#efefef',
+  green: '#21865b',
+  greenBg: '#e8fbf0',
 };
 
-const styles = StyleSheet.create({
-  categoriesGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
+// ─── Styles ──────────────────────────────────────────────────────────────────
+const s = StyleSheet.create({
+
+  safe: {flex: 1, backgroundColor: C.bg},
+
+  // Header
+  header: {
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) + 14 : 14,
+    paddingBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  categoryItem: {
-    width: "30%",
-    alignItems: "center",
-    marginBottom: 16,
+  addressBlock: {flex: 1},
+  addressLabel: {color: 'rgba(255,255,255,0.75)', fontSize: 11, fontWeight: '500', marginBottom: 2},
+  addressRow: {flexDirection: 'row', alignItems: 'center'},
+  addressPin: {color: 'rgba(255,255,255,0.85)', fontSize: 13},
+  addressText: {color: '#fff', fontWeight: '700', fontSize: 14, flex: 1},
+  chevron: {color: '#fff', fontSize: 16, marginLeft: 4},
+  headerRight: {flexDirection: 'row', alignItems: 'center'},
+  headerPill: {
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginLeft: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
   },
-  categoryIcon: {
-    width: 60,
-    height: 60,
-    resizeMode: "contain",
-    marginBottom: 6,
+  headerPillText: {color: '#fff', fontWeight: '700', fontSize: 13},
+  walletPill: {backgroundColor: '#fff'},
+  walletText: {color: C.purple, fontWeight: '700', fontSize: 13},
+  bellBtn: {
+    marginLeft: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  categoryLabel: {
-    fontSize: 12,
-    textAlign: "center",
-    fontWeight: "500",
-    color: "#333",
+  bellText: {fontSize: 17},
+
+  // Scroll
+  scroll: {paddingBottom: 96, paddingTop: 4},
+
+  // Search
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: C.card,
+    marginHorizontal: 16,
+    marginVertical: 12,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    height: 52,
+    ...Platform.select({
+      ios:     {shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: {width: 0, height: 2}},
+      android: {elevation: 3},
+    }),
   },
-  
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+  searchIcon: {fontSize: 18, marginRight: 8},
+  searchInput: {flex: 1, fontSize: 15, color: C.text},
+  clearText: {color: '#bbb', fontSize: 16, paddingLeft: 8},
+
+  // Trust strip
+  trustStrip: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginHorizontal: 16,
+    marginBottom: 14,
+    backgroundColor: C.purpleL,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+  },
+  trustItem: {flexDirection: 'row', alignItems: 'center'},
+  trustEmoji: {fontSize: 14, marginRight: 4},
+  trustText: {fontSize: 11, fontWeight: '600', color: C.purple},
+
+  // Cards (sections)
+  card: {
+    backgroundColor: C.card,
+    borderRadius: 18,
+    padding: 16,
+    marginHorizontal: 16,
+    marginBottom: 14,
+    ...Platform.select({
+      ios:     {shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 10, shadowOffset: {width: 0, height: 3}},
+      android: {elevation: 3},
+    }),
+  },
+  cardTitle: {fontSize: 18, fontWeight: '800', color: C.purple, marginBottom: 4},
+  cardTitleRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4},
+  cardSub: {fontSize: 13, color: C.sub, marginBottom: 14},
+  seeAll: {fontSize: 13, fontWeight: '700', color: C.purple},
+
+  livePill: {
+    backgroundColor: '#fff3e0',
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 20,
+  },
+  livePillText: {fontSize: 11, fontWeight: '800', color: '#f97316'},
+
+  // Story-style horizontal scroll (What do you need?)
+  storyList: {paddingVertical: 10, paddingRight: 4},
+  storyItem: {alignItems: 'center', marginRight: 18, width: 68},
+  storyRing: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    padding: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  storyInner: {
+    width: 62,
+    height: 62,
+    borderRadius: 31,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  storyEmoji: {fontSize: 28},
+  storyLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: C.text,
+    textAlign: 'center',
+    marginTop: 7,
+    lineHeight: 15,
+  },
+
+  // Deal cards
+  hPad: {paddingTop: 4, paddingBottom: 4},
+  dealCard: {
+    width: 138,
+    marginRight: 12,
+    backgroundColor: '#fafafa',
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: C.border,
+  },
+  dealBadge: {
+    backgroundColor: C.greenBg,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
     marginBottom: 8,
   },
-  seeAll: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#5A2EA6",
+  dealBadgeText: {fontSize: 10, fontWeight: '800', color: C.green},
+  dealLabel: {fontSize: 13, fontWeight: '700', color: C.text, marginBottom: 2},
+  dealTime: {fontSize: 22, fontWeight: '800', color: C.text, marginBottom: 4},
+  dealPriceRow: {flexDirection: 'row', alignItems: 'baseline', marginBottom: 12},
+  dealPrice: {fontSize: 15, fontWeight: '800', color: C.text, marginRight: 4},
+  dealOld: {fontSize: 12, color: '#bbb', textDecorationLine: 'line-through'},
+  bookBtnFill: {
+    backgroundColor: C.purple,
+    borderRadius: 10,
+    paddingVertical: 9,
+    alignItems: 'center',
   },
-  
-  horizontalCard: {
-    width: 120,
+  bookBtnFillText: {color: '#fff', fontWeight: '700', fontSize: 13},
+
+  // Most booked cards
+  bookedCard: {
     marginRight: 12,
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    overflow: "hidden",
+    backgroundColor: '#fafafa',
+    borderRadius: 14,
+    padding: 12,
     borderWidth: 1,
-    borderColor: "#f1f1f4",
+    borderColor: C.border,
   },
-  horizontalImg: {
-    width: "100%",
-    height: 100,
-    resizeMode: "cover",
-  },
-  horizontalLabel: {
-    fontSize: 13,
-    fontWeight: "600",
-    padding: 6,
-    textAlign: "center",
-  },
-  
-  serviceCard: {
-    width: CARD_WIDTH + 20,
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    marginRight: 12,
-    borderWidth: 1,
-    borderColor: "#f1f1f4",
-    padding: 8,
-  },
-  serviceImg: {
-    width: "100%",
-    height: 80,
-    borderRadius: 8,
-    resizeMode: "cover",
-  },
-  serviceTitle: {
-    fontSize: 13,
-    fontWeight: "600",
-    marginTop: 6,
-  },
-  serviceRating: {
-    fontSize: 12,
-    color: "#666",
-    marginTop: 2,
-  },
-  servicePrice: {
-    fontSize: 14,
-    fontWeight: "700",
-    marginTop: 4,
-  },
-  oldPrice: {
-    fontSize: 12,
-    color: "#999",
-    textDecorationLine: "line-through",
-  },
-  discountBadge: {
-    position: "absolute",
+  bookedBadge: {
+    position: 'absolute',
     top: 8,
-    left: 8,
-    backgroundColor: "#e8fbf0",
+    right: 8,
+    backgroundColor: C.greenBg,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
     zIndex: 1,
   },
-  discountText: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: "#21865b",
+  bookedBadgeText: {fontSize: 10, fontWeight: '800', color: C.green},
+  bookedEmojiBox: {
+    width: '100%',
+    height: 70,
+    backgroundColor: C.purpleL,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
   },
-  
-  safe: {
+  bookedEmoji: {fontSize: 34},
+  bookedTitle: {fontSize: 13, fontWeight: '700', color: C.text, marginBottom: 4, lineHeight: 18},
+  bookedRating: {fontSize: 11, color: C.sub, marginBottom: 6},
+  bookedFooter: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end'},
+  bookedPrice: {fontSize: 15, fontWeight: '800', color: C.text},
+  bookedOldPrice: {fontSize: 11, color: '#bbb', textDecorationLine: 'line-through'},
+  addBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: C.purple,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addBtnText: {color: '#fff', fontSize: 20, fontWeight: '700', lineHeight: 24},
+
+  // Our Services
+  bigRow: {flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12},
+  bigTile: {
     flex: 1,
-    backgroundColor: colors.softBg,
-  },
-  topBar: {
-    backgroundColor: colors.purple,
-    paddingHorizontal: 16,
-    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight+20 || 16 : 16,
-    paddingBottom: 18,
-   
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  timeText: {
-    color: "#fff",
-    fontSize: 12,
-  },
-  addressBlock: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  addressLabel: {
-    color: "#fff",
-    fontWeight: "600",
-    marginBottom: 2,
-  },
-  addressText: {
-    color: "#fff",
-    opacity: 0.9,
-  },
-  topButtons: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  earnBtn: {
-    backgroundColor: "#6f3bd7",
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 18,
-    marginRight: 8,
-  },
-  earnText: { color: "#fff", fontWeight: "700" },
-  walletBtn: {
-    backgroundColor: "#fff",
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 18,
-  },
-  walletText: { color: colors.purple, fontWeight: "700" },
-
-  container: {
-
-    paddingBottom: 96,
-  },
-
-  card: {
-    backgroundColor: colors.cardBg,
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 16,
-    // shadow
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.06,
-        shadowRadius: 12,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
-  },
-
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  brand: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: "#ff2d7a",
-  },
-  nowBadge: {
-    marginLeft: 8,
-    backgroundColor: "#ff2d7a",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  nowText: { color: "#fff", fontWeight: "700", fontSize: 12 },
-
-  arriveText: {
-    marginTop: 8,
-    color: colors.grayText,
-    fontWeight: "600",
-  },
-
-  promoScroll: {
-    marginTop: 8,
-  },
-
-  promoCard: {
-    width: CARD_WIDTH + 16,
-    marginRight: 12,
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 12,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#ccc",
-  },
-  offBadge: {
-    backgroundColor: "#e8fbf0",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    position: "absolute",
-    top: 8,
-    left: 8,
-  },
-  offText: { color: "#21865b", fontWeight: "700", fontSize: 11 },
-  promoTime: { marginTop: 12, fontWeight: "800", fontSize: 18, color: "#111" },
-  promoPrice: { marginTop: 6, fontSize: 14, fontWeight: "800" },
-  oldPrice: { textDecorationLine: "line-through", color: "#b0b0b5", fontWeight: "600", fontSize: 12 },
-
-  bookBtn: {
-    marginTop: 12,
-    borderWidth: 1,
-    borderColor: "#ff2d7a",
-    paddingVertical: 8,
-    paddingHorizontal: 18,
-    borderRadius: 8,
-  },
-  bookBtnText: {
-    color: "#ff2d7a",
-    fontWeight: "700",
-  },
-
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: "800",
-    marginBottom: 6,
-    color:colors.brand
-  },
-  sectionSub: {
-    color: "#777",
-    marginBottom: 12,
-  },
-
-  slotRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  slotCard: {
-    flex: 1,
-    backgroundColor: "#fff",
-    alignItems: "center",
-    paddingVertical: 18,
-    paddingHorizontal: 8,
-    borderRadius: 12,
-    marginRight: 8,
-    borderWidth: 1,
-    borderColor: "#f1f1f4",
-  },
-  slotMuted: {
-    opacity: 0.5,
-  },
-  slotImg: { width: 48, height: 48, resizeMode: "contain" },
-  slotLabel: { marginTop: 8, fontWeight: "700" },
-  slotLabelMuted: { color: "#9aa0b2" },
-
-  servicesRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 10,
-  },
-  bigService: {
-    flex: 1,
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 12,
+    backgroundColor: C.purpleL,
+    borderRadius: 14,
+    padding: 14,
     marginRight: 8,
     minHeight: 110,
-    justifyContent: "space-between",
-    borderWidth: 1,
-    borderColor: "#f1f1f4",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
   },
-  bigServiceText: { fontWeight: "800", fontSize: 16, flex: 1 },
-  serviceImage: { width: 80, height: 80, resizeMode: "contain", alignSelf: "flex-end" },
-
-  smallServicesRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    marginTop: 12,
-    justifyContent: "space-between",
-  },
-  smallService: {
-    width: Math.round((width - 64) / 4),
-    backgroundColor: "#fff",
+  bigTileText: {fontSize: 15, fontWeight: '800', color: C.purple, flex: 1},
+  bigTileImg: {width: 72, height: 72, resizeMode: 'contain'},
+  smallRow: {flexDirection: 'row', justifyContent: 'space-between'},
+  smallTile: {
+    width: Math.floor((width - 80) / 4),
+    backgroundColor: '#fafafa',
     borderRadius: 12,
-    padding: 8,
-    alignItems: "center",
-    marginBottom: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
     borderWidth: 1,
-    borderColor: "#f1f1f4",
+    borderColor: C.border,
   },
-  smallServiceImg: { width: 48, height: 48, resizeMode: "contain" },
-  smallServiceLabel: { marginTop: 6, textAlign: "center", fontSize: 12 },
+  smallTileEmoji: {fontSize: 24, marginBottom: 4},
+  smallTileLabel: {fontSize: 11, fontWeight: '600', color: C.text, textAlign: 'center'},
 
-  infoRow: {
-    flexDirection: "row",
-    alignItems: "center",
+  // Service tiles (salon / appliance)
+  srvTile: {
+    width: 90,
+    marginRight: 12,
+    alignItems: 'center',
   },
-  infoTitle: { fontSize: 18, fontWeight: "800", marginBottom: 8,color:colors.purple},
-  infoDesc: { color: "#000" },
-  infoImage: { width: 96, height: 96, resizeMode: "contain", marginLeft: 12 },
+  srvEmojiBox: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: C.purpleL,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  srvEmoji: {fontSize: 28},
+  srvLabel: {fontSize: 12, fontWeight: '600', color: C.text, textAlign: 'center'},
 
-  expertsTitle: { fontWeight: "800", fontSize: 16 },
+  applianceEmojiBox: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#fff3e0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  bottomSpacer: {height: 88},
+  promoTextWrap: {marginLeft: 10},
 
-  /* promo banner */
+  // Professional card
+  proCard: {flexDirection: 'row', alignItems: 'center', backgroundColor: C.purpleL},
+  proCardContent: {flex: 1},
+  proTitle: {fontSize: 16, fontWeight: '800', color: C.purple, marginBottom: 6},
+  proDesc: {fontSize: 13, color: '#555', lineHeight: 18, marginBottom: 10},
+  proBadgeRow: {flexDirection: 'row'},
+  proBadge: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: C.purple,
+  },
+  proBadgeText: {fontSize: 11, fontWeight: '700', color: C.purple},
+  proImg: {width: 88, height: 88, resizeMode: 'contain', marginLeft: 12},
+
+  // Sticky promo banner
   promoBanner: {
-    position: "absolute",
+    position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "#2d6aff",
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    borderBottomRightRadius:0,
-    borderBottomLeftRadius:0,
+    paddingHorizontal: 16,
     paddingVertical: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    // shadow
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     ...Platform.select({
-      ios: { shadowColor: "#000", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.12, shadowRadius: 12 },
-      android: { elevation: 6 },
+      ios:     {shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 12, shadowOffset: {width: 0, height: -3}},
+      android: {elevation: 8},
     }),
   },
-  promoLeft: { flexDirection: "row", alignItems: "center", flex: 1 },
-  promoIcon: { width: 48, height: 48, resizeMode: "contain" },
-  promoTitle: { color: "#fff", fontWeight: "800" },
-  promoTimer: { color: "#dfe9ff", marginTop: 2 },
-  promoBuy: { backgroundColor: "#fff", paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, marginLeft: 12 },
-  promoBuyText: { color: "#000", fontWeight: "800" },
-
-  /* bottom tab */
-  tabBar: {
-    height: 64,
-    backgroundColor: "#fff",
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingBottom: Platform.OS === "ios" ? 20 : 0,
+  promoLeft: {flexDirection: 'row', alignItems: 'center', flex: 1},
+  promoImg: {width: 44, height: 44, resizeMode: 'contain'},
+  promoTitle: {color: '#fff', fontWeight: '800', fontSize: 14},
+  promoTimer: {color: 'rgba(255,255,255,0.8)', fontSize: 12, marginTop: 2},
+  promoBuyBtn: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 10,
+    marginLeft: 12,
   },
-  tabItem: { alignItems: "center" },
-  tabIcon: { width: 24, height: 24, resizeMode: "contain", marginBottom: 4, tintColor: "#666" },
-  tabLabel: { fontSize: 12, color: "#666" },
+  promoBuyText: {color: C.purple, fontWeight: '800', fontSize: 14},
+  speakerMargin: {marginLeft: 8},
 });

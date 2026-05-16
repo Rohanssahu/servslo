@@ -55,7 +55,7 @@ export default function ProfileSettingsScreen({ navigation }) {
           icon="person-outline"
           label="Profile"
           subLabel="Update personal information"
-          onPress={() => navigation.navigate(ScreenNameEnum.PartnerInfoForm, { profile: true })}
+          onPress={() => navigation.navigate(ScreenNameEnum.UserInfoForm, { profile: true })}
         />
   
         <SettingsItem

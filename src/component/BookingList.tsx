@@ -72,7 +72,7 @@ const BookingList: React.FC<BookingListProps> = ({
       renderItem={({item,index}) => (
         <TouchableOpacity 
         onPress={()=>{
-          navigation.navigate(ScreenNameEnum.BookingDetails)
+          navigation.navigate(ScreenNameEnum.BookingDetailsScreen)
         }}
         style={[styles.card,{}]}>
           <View

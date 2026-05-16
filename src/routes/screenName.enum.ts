@@ -4,7 +4,7 @@ enum ScreenNameEnum {
   LANGUAGE_SELECT = 'LANGUAGE_SELECT',
   PhoneLogin = 'PhoneLogin',
   OTPVerification = 'OTPVerification',
-  PartnerInfoForm = 'PartnerInfoForm',
+  UserInfoForm = 'UserInfoForm',
   PartnerServiceSelectionScreen = 'PartnerServiceSelectionScreen',
   TabNavigator = 'TabNavigator',
   PartnerDocumentsScreen = 'PartnerDocumentsScreen',
@@ -25,6 +25,9 @@ enum ScreenNameEnum {
   BookingDetailsScreen = 'BookingDetailsScreen',
   InvoiceScreen = 'InvoiceScreen',
   Feedback = 'Feedback',
+  AllServicesScreen = 'AllServicesScreen',
+  ServiceBookingScreen = 'ServiceBookingScreen',
+  ArrivalChargesScreen = 'ArrivalChargesScreen',
 }
 
 export default ScreenNameEnum;
