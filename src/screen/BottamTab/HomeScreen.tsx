@@ -14,6 +14,7 @@ import {
   TextInput,
   Animated,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import ScreenNameEnum from '../../routes/screenName.enum';
 import LinearGradient from 'react-native-linear-gradient';
 import ServiceBottomSheet, {
@@ -32,6 +33,16 @@ import {
   addRecentSearch,
   ServiceResult,
 } from '../../utils/searchEngine';
+import WalkthroughOverlay, {
+  SpotlightRect,
+  WalkthroughStepConfig,
+} from '../../component/WalkthroughOverlay';
+import {
+  FlashDealStrip,
+  CampaignCard,
+  CouponStrip,
+  ContextualPromo,
+} from '../../component/CampaignSystem';
 
 const {width} = Dimensions.get('window');
 const BOOKED_W = 158;
@@ -60,6 +71,60 @@ const VOICE_HINTS = [
   '"plumber chahiye"',
 ];
 
+// ─── Walkthrough step definitions ────────────────────────────────────────────
+const WALKTHROUGH_STEPS: WalkthroughStepConfig[] = [
+  {
+    emoji: '📍',
+    title: 'Your Delivery Address',
+    titleHi: 'आपका पता',
+    description:
+      'This shows your location. Tap anytime to update it — your expert will come exactly here!',
+    descriptionHi:
+      'यह आपकी location दिखाता है। कभी भी tap करके बदलें — expert यहीं आएगा!',
+    tooltipBelow: true,
+  },
+  {
+    emoji: '🔍',
+    title: 'Smart Search + Voice',
+    titleHi: 'स्मार्ट सर्च + आवाज़',
+    description:
+      'Type any service, or tap 🎙️ and speak in Hindi or English. Try: "fan repair" or "bathroom safai"!',
+    descriptionHi:
+      'जो चाहिए टाइप करें, या 🎙️ दबाकर बोलें। जैसे: "bijli" या "bathroom safai"!',
+    tooltipBelow: true,
+  },
+  {
+    emoji: '🟢',
+    title: 'Live Experts Nearby',
+    titleHi: 'पास के Live Expert',
+    description:
+      'See real-time experts near you right now! Most arrive in just 10 minutes.',
+    descriptionHi:
+      'अभी आपके पास कौन available है देखें! ज़्यादातर expert 10 मिनट में पहुँचते हैं।',
+    tooltipBelow: true,
+  },
+  {
+    emoji: '⚡',
+    title: 'Quick Book Any Service',
+    titleHi: 'तुरंत कोई भी सेवा बुक करें',
+    description:
+      'Tap any icon to book instantly — electrician, plumber, cleaning & 50+ more. Done in seconds!',
+    descriptionHi:
+      'किसी भी icon को tap करें — electrician, plumber, safai और 50+ सेवाएं। बस seconds में!',
+    tooltipBelow: false,
+  },
+  {
+    emoji: '💰',
+    title: 'Best Deals & Packages',
+    titleHi: 'बेस्ट डील और पैकेज',
+    description:
+      'Pick a package with price & time shown upfront, then tap Book Now. Zero hidden charges!',
+    descriptionHi:
+      'Price और time देखें, package चुनें, Book Now दबाएं। कोई छिपे हुए charges नहीं!',
+    tooltipBelow: false,
+  },
+];
+
 export default function HomeScreen({navigation}: {navigation: any}) {
   const sheetRef = useRef<ServiceBottomSheetRef>(null);
   const searchInputRef = useRef<TextInput>(null);
@@ -67,6 +132,115 @@ export default function HomeScreen({navigation}: {navigation: any}) {
   const {lang} = useLanguage();
   const t = languageStrings[lang];
   const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  // ── Walkthrough refs ──────────────────────────────────────────────────────
+  const addressRef = useRef<View>(null);
+  const searchAreaRef = useRef<View>(null);
+  const liveCardRef = useRef<View>(null);
+  const quickServicesRef = useRef<View>(null);
+  const dealSectionRef = useRef<View>(null);
+  const mainScrollRef = useRef<ScrollView>(null);
+
+  // ── Walkthrough state ─────────────────────────────────────────────────────
+  const [walkthroughVisible, setWalkthroughVisible] = useState(false);
+  const [walkthroughStep, setWalkthroughStep] = useState(0);
+  const [spotlightRect, setSpotlightRect] = useState<SpotlightRect | null>(
+    null,
+  );
+
+  // ── Walkthrough logic ─────────────────────────────────────────────────────
+  // Keep a ref to the latest measureStep so callbacks never use a stale copy
+  const measureStepRef = useRef<(stepIndex: number) => void>(() => {});
+
+  // Inline function — re-created each render so refs are always fresh
+  const measureStep = (stepIndex: number) => {
+    // Scroll amounts that bring each element near the top of the ScrollView
+    // (animated: false → instant, so we measure on the next frame, not after a timer)
+    const scrollTargets: Record<number, number> = {2: 0, 3: 240, 4: 500};
+    const stepRefs = [
+      addressRef,
+      searchAreaRef,
+      liveCardRef,
+      quickServicesRef,
+      dealSectionRef,
+    ];
+
+    const ref = stepRefs[stepIndex];
+    if (!ref) {
+      return;
+    }
+
+    const scrollY = scrollTargets[stepIndex];
+    if (scrollY !== undefined && mainScrollRef.current) {
+      // Instant scroll — no animation so the position is settled on the next frame
+      mainScrollRef.current.scrollTo({y: scrollY, animated: false});
+    }
+
+    // Two requestAnimationFrame calls ensure the layout pass has completed
+    const tryMeasure = (attempt: number) => {
+      ref.current?.measureInWindow((mx, my, mw, mh) => {
+        if (mw > 0 && mh > 0) {
+          setSpotlightRect({
+            x: mx,
+            y: my,
+            width: mw,
+            height: mh,
+            borderRadius: 18,
+          });
+        } else if (attempt < 6) {
+          setTimeout(() => tryMeasure(attempt + 1), 200);
+        }
+      });
+    };
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        tryMeasure(0);
+      });
+    });
+  };
+
+  // Always keep the ref in sync with the latest closure
+  measureStepRef.current = measureStep;
+
+  const handleWalkthroughNext = useCallback(() => {
+    const next = walkthroughStep + 1;
+    if (next >= WALKTHROUGH_STEPS.length) {
+      setWalkthroughVisible(false);
+      AsyncStorage.setItem('wtSeen_v1', '1');
+      mainScrollRef.current?.scrollTo({y: 0, animated: true});
+    } else {
+      setSpotlightRect(null);
+      setWalkthroughStep(next);
+      // Let the null-spotlight render first, then measure the next element
+      setTimeout(() => measureStepRef.current(next), 80);
+    }
+  }, [walkthroughStep]);
+
+  const handleWalkthroughSkip = useCallback(() => {
+    setWalkthroughVisible(false);
+    AsyncStorage.setItem('wtSeen_v1', '1');
+    mainScrollRef.current?.scrollTo({y: 0, animated: true});
+  }, []);
+
+  // Show walkthrough on first open
+  useEffect(() => {
+    AsyncStorage.getItem('wtSeen_v1').then(val => {
+      if (!val) {
+        setTimeout(() => {
+          setWalkthroughVisible(true);
+          setWalkthroughStep(0);
+          setSpotlightRect(null);
+          // Two frames after state update to let the UI settle before measuring
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              measureStepRef.current(0);
+            });
+          });
+        }, 900);
+      }
+    });
+  }, []);
 
   // ── Search state ─────────────────────────────────────────────────────────
   const [searchText, setSearchText] = useState('');
@@ -256,18 +430,20 @@ export default function HomeScreen({navigation}: {navigation: any}) {
         start={{x: 0.1, y: 0}}
         end={{x: 1, y: 1}}
         style={s.header}>
-        <TouchableOpacity
-          style={s.addressBlock}
-          onPress={() => navigation.navigate(ScreenNameEnum.AddressesScreen)}
-          activeOpacity={0.8}>
-          <Text style={s.addressLabel}>{t.welcomeBack}</Text>
-          <View style={s.addressRow}>
-            <Text style={s.addressPin}>📍 </Text>
-            <Text style={s.addressText} numberOfLines={1}>
-              Mulund Road, Mumbai...
-            </Text>
-          </View>
-        </TouchableOpacity>
+        <View ref={addressRef} collapsable={false}>
+          <TouchableOpacity
+            style={s.addressBlock}
+            onPress={() => navigation.navigate(ScreenNameEnum.AddressesScreen)}
+            activeOpacity={0.8}>
+            <Text style={s.addressLabel}>{t.welcomeBack}</Text>
+            <View style={s.addressRow}>
+              <Text style={s.addressPin}>📍 </Text>
+              <Text style={s.addressText} numberOfLines={1}>
+                Mulund Road, Mumbai...
+              </Text>
+            </View>
+          </TouchableOpacity>
+        </View>
         <View style={s.headerRight}>
           <TouchableOpacity
             style={s.bellBtn}
@@ -285,7 +461,7 @@ export default function HomeScreen({navigation}: {navigation: any}) {
       </LinearGradient>
 
       {/* ── Smart Search Bar (outside ScrollView, always visible) ─────── */}
-      <View style={s.searchArea}>
+      <View style={s.searchArea} ref={searchAreaRef} collapsable={false}>
         <SmartSearchBar
           inputRef={searchInputRef}
           value={searchText}
@@ -307,7 +483,7 @@ export default function HomeScreen({navigation}: {navigation: any}) {
       </View>
 
       {/* ── Conditional: Search Mode OR Normal Home Content ───────────── */}
-      {searchMode ? (
+      {searchMode && !walkthroughVisible ? (
         /* ── SEARCH MODE ─────────────────────────────────────────────── */
         <ScrollView
           style={s.searchScroll}
@@ -481,6 +657,7 @@ export default function HomeScreen({navigation}: {navigation: any}) {
       ) : (
         /* ── NORMAL HOME CONTENT ──────────────────────────────────────── */
         <ScrollView
+          ref={mainScrollRef}
           contentContainerStyle={s.scroll}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled">
@@ -494,8 +671,11 @@ export default function HomeScreen({navigation}: {navigation: any}) {
             ))}
           </View>
 
+          {/* Flash Deal Strip */}
+          <FlashDealStrip lang={lang} />
+
           {/* Live Availability Card */}
-          <View style={s.liveCard}>
+          <View style={s.liveCard} ref={liveCardRef} collapsable={false}>
             <View style={s.liveHeader}>
               <Animated.View
                 style={[s.liveDot, {transform: [{scale: pulseAnim}]}]}
@@ -551,7 +731,7 @@ export default function HomeScreen({navigation}: {navigation: any}) {
           </View>
 
           {/* What do you need? */}
-          <View style={s.card}>
+          <View style={s.card} ref={quickServicesRef} collapsable={false}>
             <View style={s.cardTitleRow}>
               <Text style={s.cardTitle}>{t.whatDoYouNeed}</Text>
               <TouchableOpacity
@@ -601,8 +781,15 @@ export default function HomeScreen({navigation}: {navigation: any}) {
             </ScrollView>
           </View>
 
+          {/* IPL Campaign Card */}
+          <CampaignCard
+            type="ipl"
+            lang={lang}
+            onPress={() => sheetRef.current?.open()}
+          />
+
           {/* Quick Cleaning Packages */}
-          <View style={s.card}>
+          <View style={s.card} ref={dealSectionRef} collapsable={false}>
             <View style={s.cardTitleRow}>
               <Text style={s.cardTitle}>{t.quickCleaning}</Text>
               <View style={s.livePill}>
@@ -635,6 +822,9 @@ export default function HomeScreen({navigation}: {navigation: any}) {
               ))}
             </ScrollView>
           </View>
+
+          {/* Coupon Strip */}
+          <CouponStrip lang={lang} />
 
           {/* Most Booked */}
           <View style={s.card}>
@@ -690,6 +880,22 @@ export default function HomeScreen({navigation}: {navigation: any}) {
               ))}
             </ScrollView>
           </View>
+
+          {/* Contextual Promo */}
+          <ContextualPromo
+            lang={lang}
+            onPress={() =>
+              navigation.navigate(ScreenNameEnum.ServiceBookingScreen, {
+                service: {
+                  label: 'AC Service',
+                  emoji: '❄️',
+                  desc: 'Service & repair',
+                  rating: '4.8',
+                  basePrice: 349,
+                },
+              })
+            }
+          />
 
           {/* Our Services */}
           <View style={s.card}>
@@ -748,6 +954,18 @@ export default function HomeScreen({navigation}: {navigation: any}) {
             </ScrollView>
           </View>
 
+          {/* Monsoon Campaign Card */}
+          <CampaignCard
+            type="monsoon"
+            lang={lang}
+            onPress={() =>
+              navigation.navigate(ScreenNameEnum.NearbyProvidersScreen, {
+                category: 'Electricians',
+                title: 'Electricians Nearby',
+              })
+            }
+          />
+
           {/* Appliance Repair */}
           <View style={s.card}>
             <View style={s.cardTitleRow}>
@@ -803,6 +1021,18 @@ export default function HomeScreen({navigation}: {navigation: any}) {
         ref={sheetRef}
         onClose={() => console.log('Sheet closed')}
       />
+
+      <WalkthroughOverlay
+        visible={walkthroughVisible}
+        spotlightRect={spotlightRect}
+        step={WALKTHROUGH_STEPS[walkthroughStep] ?? null}
+        stepIndex={walkthroughStep}
+        totalSteps={WALKTHROUGH_STEPS.length}
+        onNext={handleWalkthroughNext}
+        onFinish={handleWalkthroughSkip}
+        onSkip={handleWalkthroughSkip}
+        lang={lang}
+      />
     </SafeAreaView>
   );
 }
@@ -827,7 +1057,7 @@ const s = StyleSheet.create({
   // Header
   header: {
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingVertical: 30,
     flexDirection: 'row',
     alignItems: 'center',
   },

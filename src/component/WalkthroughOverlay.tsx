@@ -8,12 +8,21 @@ import {
   Dimensions,
   Modal,
   Platform,
+  Easing,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 
 const {width: W, height: H} = Dimensions.get('window');
 const PAD = 10;
-const OVERLAY = 'rgba(8,4,25,0.83)';
+const OVERLAY_COLOR = 'rgba(5,2,18,0.88)';
+const ACCENT = '#6E39F7';
+
+// Tooltip height we reserve space for (conservative — card content fits in this)
+const TOOLTIP_H = 240;
+const TIP_MARGIN = 14; // gap between spotlight edge and tooltip
+const TIP_SIDE_PAD = 14; // tooltip left/right screen margin
+const TIP_WIDTH = W - TIP_SIDE_PAD * 2;
+const MIN_TOP = 48; // never closer to top than this
 
 export interface SpotlightRect {
   x: number;
@@ -57,94 +66,160 @@ export default function WalkthroughOverlay({
 }: Props) {
   const overlayOpacity = useRef(new Animated.Value(0)).current;
   const tooltipOpacity = useRef(new Animated.Value(0)).current;
-  const tooltipTranslate = useRef(new Animated.Value(28)).current;
-  const borderPulse = useRef(new Animated.Value(1)).current;
-  const glowOpacity = useRef(new Animated.Value(0.5)).current;
+  const tooltipTranslateY = useRef(new Animated.Value(18)).current;
+  const tooltipScale = useRef(new Animated.Value(0.94)).current;
+  const glowOpacity = useRef(new Animated.Value(0.6)).current;
+  const glowScale = useRef(new Animated.Value(1)).current;
   const glowLoopRef = useRef<Animated.CompositeAnimation | null>(null);
-  const pulseLoopRef = useRef<Animated.CompositeAnimation | null>(null);
 
-  // Fade overlay in/out
+  // Overlay fade in / out
   useEffect(() => {
     Animated.timing(overlayOpacity, {
       toValue: visible ? 1 : 0,
-      duration: 320,
+      duration: 240,
       useNativeDriver: true,
     }).start();
   }, [visible, overlayOpacity]);
 
-  // Animate tooltip + glow on each new spotlight rect
+  // Animate tooltip + glow whenever spotlight changes
   useEffect(() => {
-    if (!spotlightRect || !step) return;
+    if (!spotlightRect || !step) {
+      return;
+    }
 
     tooltipOpacity.setValue(0);
-    tooltipTranslate.setValue(28);
+    tooltipTranslateY.setValue(18);
+    tooltipScale.setValue(0.94);
 
     Animated.parallel([
-      Animated.timing(tooltipOpacity, {toValue: 1, duration: 300, useNativeDriver: true}),
-      Animated.spring(tooltipTranslate, {
+      Animated.timing(tooltipOpacity, {
+        toValue: 1,
+        duration: 280,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.spring(tooltipTranslateY, {
         toValue: 0,
-        tension: 65,
-        friction: 9,
+        tension: 72,
+        friction: 11,
+        useNativeDriver: true,
+      }),
+      Animated.spring(tooltipScale, {
+        toValue: 1,
+        tension: 72,
+        friction: 11,
         useNativeDriver: true,
       }),
     ]).start();
 
+    // Glow pulse around spotlight
     glowLoopRef.current?.stop();
-    glowOpacity.setValue(0.5);
+    glowOpacity.setValue(0.6);
+    glowScale.setValue(1);
     glowLoopRef.current = Animated.loop(
       Animated.sequence([
-        Animated.timing(glowOpacity, {toValue: 1, duration: 850, useNativeDriver: true}),
-        Animated.timing(glowOpacity, {toValue: 0.45, duration: 850, useNativeDriver: true}),
+        Animated.parallel([
+          Animated.timing(glowOpacity, {
+            toValue: 1,
+            duration: 900,
+            useNativeDriver: true,
+          }),
+          Animated.timing(glowScale, {
+            toValue: 1.014,
+            duration: 900,
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.parallel([
+          Animated.timing(glowOpacity, {
+            toValue: 0.5,
+            duration: 900,
+            useNativeDriver: true,
+          }),
+          Animated.timing(glowScale, {
+            toValue: 1,
+            duration: 900,
+            useNativeDriver: true,
+          }),
+        ]),
       ]),
     );
     glowLoopRef.current.start();
 
-    pulseLoopRef.current?.stop();
-    borderPulse.setValue(1);
-    pulseLoopRef.current = Animated.loop(
-      Animated.sequence([
-        Animated.timing(borderPulse, {toValue: 1.016, duration: 900, useNativeDriver: true}),
-        Animated.timing(borderPulse, {toValue: 1, duration: 900, useNativeDriver: true}),
-      ]),
-    );
-    pulseLoopRef.current.start();
-
     return () => {
       glowLoopRef.current?.stop();
-      pulseLoopRef.current?.stop();
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [spotlightRect?.x, spotlightRect?.y, spotlightRect?.width]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    spotlightRect?.x,
+    spotlightRect?.y,
+    spotlightRect?.width,
+    spotlightRect?.height,
+  ]);
 
-  if (!visible) return null;
+  if (!visible) {
+    return null;
+  }
 
   const isLast = stepIndex === totalSteps - 1;
   const hasSpotlight = !!spotlightRect && !!step;
   const title = step ? (lang === 'hi' ? step.titleHi : step.title) : '';
-  const description = step ? (lang === 'hi' ? step.descriptionHi : step.description) : '';
-  const stepLabel = lang === 'hi' ? `${stepIndex + 1} / ${totalSteps}` : `${stepIndex + 1} of ${totalSteps}`;
+  const desc = step ? (lang === 'hi' ? step.descriptionHi : step.description) : '';
+  const stepLabel = `${stepIndex + 1} / ${totalSteps}`;
+  const progress = (stepIndex + 1) / totalSteps;
 
-  // Spotlight geometry
-  let hX = 0, hY = 0, hW = W, hH = 80, hR = 14;
-  let tooltipTop = H / 2 - 100;
+  // ── Spotlight geometry ────────────────────────────────────────────────────
+  let hX = 0;
+  let hY = MIN_TOP;
+  let hW = W;
+  let hH = 60;
+  let hR = 14;
+
+  // ── Tooltip positioning ───────────────────────────────────────────────────
+  // Strategy: pick the side (above / below spotlight) that has the most room.
+  // Never overlap the spotlight. Clamp hard so it never leaves the screen.
+  let tooltipTop = (H - TOOLTIP_H) / 2;
+  let arrowMode: 'up' | 'down' | 'none' = 'none';
+  // Arrow position within the tooltip (relative to tooltip's left edge)
+  let arrowInTooltip = TIP_WIDTH / 2 - 13;
 
   if (hasSpotlight && spotlightRect) {
     hX = Math.max(0, spotlightRect.x - PAD);
     hY = Math.max(0, spotlightRect.y - PAD);
     hW = Math.min(spotlightRect.width + PAD * 2, W - hX);
     hH = spotlightRect.height + PAD * 2;
-    hR = (spotlightRect.borderRadius ?? 14) + PAD;
+    hR = Math.min((spotlightRect.borderRadius ?? 14) + PAD, hW / 2);
 
-    const TOOLTIP_EST_H = 220;
-    const MARGIN = 18;
-    const belowY = hY + hH + MARGIN;
-    const aboveY = hY - MARGIN - TOOLTIP_EST_H;
+    // Spotlight center-x → arrow position within tooltip
+    const spotCenterX = spotlightRect.x + spotlightRect.width / 2;
+    // Tooltip starts at TIP_SIDE_PAD from screen left
+    const rawArrow = spotCenterX - TIP_SIDE_PAD - 13; // 13 = half arrow width
+    arrowInTooltip = Math.max(8, Math.min(rawArrow, TIP_WIDTH - 34));
 
-    if (step!.tooltipBelow && belowY + TOOLTIP_EST_H < H - 16) {
-      tooltipTop = belowY;
+    // Space available above and below the padded spotlight
+    const spaceBelow = H - (hY + hH) - TIP_MARGIN - 20;
+    const spaceAbove = hY - TIP_MARGIN - MIN_TOP;
+
+    if (spaceBelow >= TOOLTIP_H) {
+      // Enough room below → place below, arrow points up toward spotlight
+      tooltipTop = hY + hH + TIP_MARGIN;
+      arrowMode = 'up';
+    } else if (spaceAbove >= TOOLTIP_H) {
+      // Enough room above → place above, arrow points down toward spotlight
+      tooltipTop = hY - TIP_MARGIN - TOOLTIP_H;
+      arrowMode = 'down';
+    } else if (spaceBelow >= spaceAbove) {
+      // More room below but tight → push to bottom edge
+      tooltipTop = H - TOOLTIP_H - 20;
+      arrowMode = 'up';
     } else {
-      tooltipTop = Math.max(aboveY, 16);
+      // More room above but tight → push near top
+      tooltipTop = MIN_TOP;
+      arrowMode = 'down';
     }
+
+    // Hard clamp — never off screen
+    tooltipTop = Math.max(MIN_TOP, Math.min(tooltipTop, H - TOOLTIP_H - 16));
   }
 
   return (
@@ -152,14 +227,36 @@ export default function WalkthroughOverlay({
       <Animated.View style={[StyleSheet.absoluteFill, {opacity: overlayOpacity}]}>
         {hasSpotlight ? (
           <>
-            {/* 4 dark panels create the spotlight cutout */}
-            <View style={[s.panel, {top: 0, left: 0, right: 0, height: hY}]} />
-            <View style={[s.panel, {top: hY + hH, left: 0, right: 0, bottom: 0}]} />
-            <View style={[s.panel, {top: hY, left: 0, width: hX, height: hH}]} />
-            <View style={[s.panel, {top: hY, left: hX + hW, right: 0, height: hH}]} />
-
-            {/* Transparent touch blocker over spotlight area */}
+            {/* 4 dark panels that create the transparent spotlight hole */}
             <View
+              style={[s.panel, s.panelSpanH, s.panelAnchorTop, {height: hY}]}
+            />
+            <View
+              style={[
+                s.panel,
+                s.panelSpanH,
+                s.panelAnchorBottom,
+                {top: hY + hH},
+              ]}
+            />
+            <View
+              style={[
+                s.panel,
+                s.panelFromLeft,
+                {top: hY, width: hX, height: hH},
+              ]}
+            />
+            <View
+              style={[
+                s.panel,
+                s.panelFromRight,
+                {top: hY, left: hX + hW, height: hH},
+              ]}
+            />
+
+            {/* Invisible touch-blocker over spotlight (pass-through) */}
+            <View
+              pointerEvents="none"
               style={{
                 position: 'absolute',
                 top: hY,
@@ -169,107 +266,124 @@ export default function WalkthroughOverlay({
               }}
             />
 
-            {/* Animated glow border */}
+            {/* Animated glow ring */}
             <Animated.View
+              pointerEvents="none"
               style={[
-                s.glowBorder,
+                s.glowRing,
                 {
-                  top: hY - 2,
-                  left: hX - 2,
-                  width: hW + 4,
-                  height: hH + 4,
-                  borderRadius: hR + 2,
+                  top: hY - 3,
+                  left: hX - 3,
+                  width: hW + 6,
+                  height: hH + 6,
+                  borderRadius: hR + 3,
                   opacity: glowOpacity,
-                  transform: [{scale: borderPulse}],
+                  transform: [{scale: glowScale}],
                 },
               ]}
-              pointerEvents="none"
             />
 
-            {/* Corner brackets */}
+            {/* Corner bracket accents */}
             <View
+              pointerEvents="none"
               style={[s.corner, s.cornerTL, {top: hY - 5, left: hX - 5}]}
-              pointerEvents="none"
             />
             <View
-              style={[s.corner, s.cornerTR, {top: hY - 5, left: hX + hW - 13}]}
               pointerEvents="none"
+              style={[
+                s.corner,
+                s.cornerTR,
+                {top: hY - 5, left: hX + hW - 16},
+              ]}
             />
             <View
-              style={[s.corner, s.cornerBL, {top: hY + hH - 13, left: hX - 5}]}
               pointerEvents="none"
+              style={[
+                s.corner,
+                s.cornerBL,
+                {top: hY + hH - 16, left: hX - 5},
+              ]}
             />
             <View
-              style={[s.corner, s.cornerBR, {top: hY + hH - 13, left: hX + hW - 13}]}
               pointerEvents="none"
+              style={[
+                s.corner,
+                s.cornerBR,
+                {top: hY + hH - 16, left: hX + hW - 16},
+              ]}
             />
 
-            {/* Tooltip card — rendered last so it receives touches above panels */}
+            {/* ── Tooltip ──────────────────────────────────────────────── */}
             <Animated.View
               style={[
                 s.tooltipWrap,
                 {
                   top: tooltipTop,
                   opacity: tooltipOpacity,
-                  transform: [{translateY: tooltipTranslate}],
+                  transform: [
+                    {translateY: tooltipTranslateY},
+                    {scale: tooltipScale},
+                  ],
                 },
               ]}>
+              {/* Arrow pointing UP — tooltip is below the spotlight */}
+              {arrowMode === 'up' && (
+                <View style={[s.arrowUp, {left: arrowInTooltip}]} />
+              )}
+
               <LinearGradient
-                colors={['#FFFFFF', '#F7F2FF']}
+                colors={['#FFFFFF', '#F3EDFF']}
                 start={{x: 0, y: 0}}
                 end={{x: 1, y: 1}}
-                style={s.tooltipGrad}>
+                style={s.card}>
                 {/* Header: step counter + skip */}
-                <View style={s.tipHeader}>
-                  <Text style={s.stepCounter}>{stepLabel}</Text>
+                <View style={s.cardHeader}>
+                  <View style={s.stepPill}>
+                    <Text style={s.stepPillText}>{stepLabel}</Text>
+                  </View>
                   <TouchableOpacity
                     onPress={onSkip}
-                    hitSlop={{top: 12, bottom: 12, left: 12, right: 12}}>
+                    hitSlop={{top: 14, bottom: 14, left: 18, right: 18}}>
                     <Text style={s.skipText}>
-                      {lang === 'hi' ? 'छोड़ें' : 'Skip'}
+                      {lang === 'hi' ? 'छोड़ें ✕' : 'Skip ✕'}
                     </Text>
                   </TouchableOpacity>
                 </View>
 
-                {/* Progress dots */}
-                <View style={s.dotsRow}>
-                  {Array.from({length: totalSteps}).map((_, i) => (
-                    <View
-                      key={i}
-                      style={[
-                        s.dot,
-                        i < stepIndex && s.dotDone,
-                        i === stepIndex && s.dotActive,
-                      ]}
-                    />
-                  ))}
+                {/* Progress bar */}
+                <View style={s.progressTrack}>
+                  <View
+                    style={[s.progressFill, {width: `${progress * 100}%`}]}
+                  />
                 </View>
 
                 {/* Emoji + title */}
                 <View style={s.titleRow}>
-                  <Text style={s.emoji}>{step!.emoji}</Text>
-                  <Text style={s.titleText} numberOfLines={1}>
+                  <View style={s.emojiBox}>
+                    <Text style={s.emoji}>{step!.emoji}</Text>
+                  </View>
+                  <Text style={s.titleText} numberOfLines={2}>
                     {title}
                   </Text>
                 </View>
 
                 {/* Description */}
-                <Text style={s.descText}>{description}</Text>
+                <Text style={s.descText}>{desc}</Text>
 
                 {/* Next / Done button */}
                 <TouchableOpacity
                   onPress={isLast ? onFinish : onNext}
-                  activeOpacity={0.85}>
+                  activeOpacity={0.84}>
                   <LinearGradient
-                    colors={['#6E39F7', '#A67CFF']}
+                    colors={['#7C45FF', '#5525DC']}
                     start={{x: 0, y: 0}}
                     end={{x: 1, y: 0}}
                     style={s.nextBtn}>
                     <Text style={s.nextText}>
                       {isLast
                         ? lang === 'hi'
-                          ? 'चलिए शुरू करें! 🚀'
-                          : "Let's Go! 🚀"
+                          ? '🚀 चलिए शुरू करें!'
+                          : '🚀 Get Started!'
                         : lang === 'hi'
                         ? 'अगला →'
                         : 'Next →'}
@@ -277,11 +391,18 @@ export default function WalkthroughOverlay({
                   </LinearGradient>
                 </TouchableOpacity>
               </LinearGradient>
+
+              {/* Arrow pointing DOWN — tooltip is above the spotlight */}
+              {arrowMode === 'down' && (
+                <View style={[s.arrowDown, {left: arrowInTooltip}]} />
+              )}
             </Animated.View>
           </>
         ) : (
-          /* Full dark screen between step transitions */
-          <View style={[StyleSheet.absoluteFill, {backgroundColor: OVERLAY}]} />
+          /* Between steps: full dim while next measurement loads */
+          <View
+            style={[StyleSheet.absoluteFill, {backgroundColor: OVERLAY_COLOR}]}
+          />
         )}
       </Animated.View>
     </Modal>
@@ -291,124 +412,168 @@ export default function WalkthroughOverlay({
 const s = StyleSheet.create({
   panel: {
     position: 'absolute',
-    backgroundColor: OVERLAY,
+    backgroundColor: OVERLAY_COLOR,
   },
-  glowBorder: {
+  panelSpanH: {left: 0, right: 0},
+  panelFromLeft: {left: 0},
+  panelFromRight: {right: 0},
+  panelAnchorTop: {top: 0},
+  panelAnchorBottom: {bottom: 0},
+  glowRing: {
     position: 'absolute',
     borderWidth: 2.5,
     borderColor: '#A67CFF',
   },
   corner: {
     position: 'absolute',
-    width: 18,
-    height: 18,
+    width: 20,
+    height: 20,
   },
   cornerTL: {
     borderTopWidth: 3,
     borderLeftWidth: 3,
     borderColor: '#fff',
-    borderTopLeftRadius: 5,
+    borderTopLeftRadius: 6,
   },
   cornerTR: {
     borderTopWidth: 3,
     borderRightWidth: 3,
     borderColor: '#fff',
-    borderTopRightRadius: 5,
+    borderTopRightRadius: 6,
   },
   cornerBL: {
     borderBottomWidth: 3,
     borderLeftWidth: 3,
     borderColor: '#fff',
-    borderBottomLeftRadius: 5,
+    borderBottomLeftRadius: 6,
   },
   cornerBR: {
     borderBottomWidth: 3,
     borderRightWidth: 3,
     borderColor: '#fff',
-    borderBottomRightRadius: 5,
+    borderBottomRightRadius: 6,
   },
+
   tooltipWrap: {
     position: 'absolute',
-    left: 16,
-    right: 16,
-    borderRadius: 22,
+    left: TIP_SIDE_PAD,
+    right: TIP_SIDE_PAD,
     ...Platform.select({
       ios: {
-        shadowColor: '#2C0E80',
+        shadowColor: '#1A0060',
         shadowOpacity: 0.28,
-        shadowRadius: 24,
-        shadowOffset: {width: 0, height: 10},
+        shadowRadius: 28,
+        shadowOffset: {width: 0, height: 12},
       },
-      android: {elevation: 20},
+      android: {elevation: 22},
     }),
   },
-  tooltipGrad: {
-    borderRadius: 22,
-    padding: 22,
+
+  // Arrow UP: tooltip is below spotlight, arrow sits on top edge of tooltip
+  arrowUp: {
+    alignSelf: 'flex-start',
+    width: 0,
+    height: 0,
+    borderLeftWidth: 13,
+    borderRightWidth: 13,
+    borderBottomWidth: 11,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderBottomColor: '#FFFFFF',
+    marginBottom: -1,
   },
-  tipHeader: {
+  // Arrow DOWN: tooltip is above spotlight, arrow sits on bottom edge of tooltip
+  arrowDown: {
+    alignSelf: 'flex-start',
+    width: 0,
+    height: 0,
+    borderLeftWidth: 13,
+    borderRightWidth: 13,
+    borderTopWidth: 11,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderTopColor: '#F3EDFF',
+    marginTop: -1,
+  },
+
+  card: {
+    borderRadius: 20,
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 18,
+  },
+  cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
   },
-  stepCounter: {
+  stepPill: {
+    backgroundColor: '#EDE0FF',
+    borderRadius: 20,
+    paddingHorizontal: 11,
+    paddingVertical: 4,
+  },
+  stepPillText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#9B72FF',
-    letterSpacing: 0.6,
+    color: ACCENT,
+    letterSpacing: 0.4,
   },
   skipText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#BBAACC',
+    color: '#ACACAC',
   },
-  dotsRow: {
-    flexDirection: 'row',
-    gap: 5,
+  progressTrack: {
+    height: 4,
+    backgroundColor: '#EDE0FF',
+    borderRadius: 2,
     marginBottom: 16,
+    overflow: 'hidden',
   },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#E0D4FF',
-  },
-  dotDone: {
-    backgroundColor: '#C4A8FF',
-  },
-  dotActive: {
-    width: 22,
-    backgroundColor: '#6E39F7',
-    borderRadius: 3,
+  progressFill: {
+    height: 4,
+    backgroundColor: ACCENT,
+    borderRadius: 2,
   },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 11,
     marginBottom: 9,
   },
-  emoji: {fontSize: 28},
+  emojiBox: {
+    width: 46,
+    height: 46,
+    borderRadius: 13,
+    backgroundColor: '#EDE0FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  emoji: {fontSize: 24},
   titleText: {
-    fontSize: 19,
+    flex: 1,
+    fontSize: 17,
     fontWeight: '800',
     color: '#1a1a2e',
-    flex: 1,
-    letterSpacing: -0.2,
+    letterSpacing: -0.3,
+    lineHeight: 23,
   },
   descText: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#555',
-    lineHeight: 22,
-    marginBottom: 20,
+    lineHeight: 20,
+    marginBottom: 16,
   },
   nextBtn: {
     borderRadius: 13,
-    paddingVertical: 14,
+    paddingVertical: 13,
     alignItems: 'center',
   },
   nextText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
     color: '#fff',
     letterSpacing: 0.2,
