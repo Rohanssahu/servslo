@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#6A47E2</color>
+    <!-- ServSLO brand purple — used as notification LED / icon tint color -->
+    <color name="notification_color">#6E39F7</color>
 </resources>

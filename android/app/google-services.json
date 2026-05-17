@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "417228338311",
+    "project_id": "servslo",
+    "storage_bucket": "servslo.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:417228338311:android:ab226afc172de65b15f422",
+        "android_client_info": {
+          "package_name": "com.servslo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBYirLN-GtP0xDYIRJwW0ietzDGDqB3-R8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,41 +1,28 @@
 // src/services/socket.ts
-// Super-light mock of realtime partner movement + status ticks.
-// Replace with Socket.IO or Firebase in production.
+// Backward-compatibility shim — delegates to trackingEngine.
+// Existing callers that import startFakeLocation / stopFakeLocation / onLocation
+// continue to work without any changes.
 
 import { LatLng } from './api';
+import {
+  startTracking,
+  stopTracking,
+  onLocationUpdate,
+  TrackingLocationUpdate,
+} from './trackingEngine';
 
 type Listener = (loc: LatLng) => void;
 
-let timer: any = null;
-let current: LatLng | null = null;
-let dest: LatLng | null = null;
-let listeners: Listener[] = [];
-
-export function startFakeLocation(from: LatLng, to: LatLng) {
-  current = { ...from };
-  dest = { ...to };
-  stopFakeLocation();
-  timer = setInterval(tick, 1000);
+export function startFakeLocation(from: LatLng, to: LatLng): void {
+  startTracking(from, to);
 }
 
-export function stopFakeLocation() {
-  if (timer) clearInterval(timer);
-  timer = null;
+export function stopFakeLocation(): void {
+  stopTracking();
 }
 
-function tick() {
-  if (!current || !dest) return;
-  const f = 0.12;
-  current = {
-    latitude: current.latitude + (dest.latitude - current.latitude) * f,
-    longitude: current.longitude + (dest.longitude - current.longitude) * f,
-  };
-  listeners.forEach((cb) => cb(current!));
-}
-
-export function onLocation(cb: Listener) {
-  listeners.push(cb);
-  return () => {
-    listeners = listeners.filter((x) => x !== cb);
-  };
+export function onLocation(cb: Listener): () => void {
+  return onLocationUpdate((update: TrackingLocationUpdate) => {
+    cb(update.location);
+  });
 }

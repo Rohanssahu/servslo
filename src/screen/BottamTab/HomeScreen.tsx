@@ -674,7 +674,7 @@ export default function HomeScreen({navigation}: {navigation: any}) {
 
           {/* Flash Deal Strip */}
           <FlashDealStrip lang={lang} />
-
+ 
           {/* Live Availability Card */}
           <View style={s.liveCard} ref={liveCardRef} collapsable={false}>
             <View style={s.liveHeader}>
@@ -782,7 +782,7 @@ export default function HomeScreen({navigation}: {navigation: any}) {
             </ScrollView>
           </View>
 
-          {/* Rotating Campaign Banner (auto-cycles IPL → Monsoon → First-time) */}
+         {/* Rotating Campaign Banner (auto-cycles IPL → Monsoon → First-time) */}
           <RotatingCampaignBanner
             lang={lang}
             onPress={() => sheetRef.current?.open()}
