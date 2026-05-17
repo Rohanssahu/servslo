@@ -59,7 +59,7 @@ export default function NotificationList({navigation}: any) {
       {id: 'all', label: s.allNotif, icon: 'bell-outline'},
       {id: 'booking', label: s.bookingNotif, icon: 'calendar-check-outline'},
       {id: 'offer', label: s.offerNotif, icon: 'sale'},
-      {id: 'payment', label: s.paymentNotif, icon: 'cash-outline'},
+      {id: 'payment', label: s.paymentNotif, icon: 'cash-multiple'},
       {id: 'update', label: s.updateNotif, icon: 'bell-ring-outline'},
     ];
   }, [lang]);

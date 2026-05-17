@@ -39,6 +39,12 @@ const UPI_APPS = [
   {id: 'other', label: 'Other UPI', icon: 'qr-code'},
 ];
 
+const PAYMENT_OFFERS = [
+  {icon: '🎰', name: 'Win 100% Cashback', desc: 'Scratch card on lucky orders', tag: 'T&C'},
+  {icon: '💙', name: 'BHIM UPI Offer', desc: '₹30 cashback for BHIM users', tag: 'New'},
+  {icon: '⚡', name: 'Amazon Pay Extra', desc: '₹25 off via Amazon Pay UPI', tag: 'Hot'},
+];
+
 type PreSelectedProvider = {
   name: string;
   initial: string;
@@ -93,6 +99,7 @@ export default function PaymentScreen({route, navigation}: Props) {
   const [payPlan, setPayPlan] = useState<'FULL' | 'ARRIVAL_ONLY'>('FULL');
   const [mode, setMode] = useState<'CASH' | 'UPI' | null>(null);
   const [upiApp, setUpiApp] = useState<string | null>(null);
+  const [appliedCoupon, setAppliedCoupon] = useState<{code: string; discount: number} | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [payPhase, setPayPhase] = useState<0 | 1 | 2>(0);
   const scale = useRef(new Animated.Value(0)).current;
@@ -105,7 +112,15 @@ export default function PaymentScreen({route, navigation}: Props) {
   const provSlide = useRef(new Animated.Value(55)).current;
   const provFade = useRef(new Animated.Value(0)).current;
 
-  const amountToPay = payPlan === 'ARRIVAL_ONLY' ? arrivalCharge : amount;
+  const discount = appliedCoupon?.discount ?? 0;
+  const baseAmount = payPlan === 'ARRIVAL_ONLY' ? arrivalCharge : amount;
+  const amountToPay = Math.max(0, baseAmount - discount);
+
+  // Receive coupon applied from ApplyCouponScreen
+  useEffect(() => {
+    const incoming = (route.params as any)?.appliedCoupon;
+    if (incoming) setAppliedCoupon(incoming);
+  }, [(route.params as any)?.appliedCoupon]);
 
   useEffect(() => {
     if (payPhase !== 1) return;
@@ -261,13 +276,78 @@ export default function PaymentScreen({route, navigation}: Props) {
                 <Text style={[s.breakVal, {color: C.orange}]}>₹{arrivalCharge}</Text>
               </View>
             )}
+            {appliedCoupon && (
+              <View style={s.breakRow}>
+                <Text style={[s.breakLabel, {color: C.green}]}>🎟 {appliedCoupon.code}</Text>
+                <Text style={[s.breakVal, {color: C.green}]}>-₹{appliedCoupon.discount}</Text>
+              </View>
+            )}
             <View style={s.breakDivider} />
             <View style={s.breakRow}>
-              <Text style={[s.breakLabel, {fontWeight: '800', color: C.text}]}>Total</Text>
+              <Text style={[s.breakLabel, {fontWeight: '800', color: C.text}]}>
+                {appliedCoupon ? 'You Pay' : 'Total'}
+              </Text>
               <Text style={[s.breakVal, {fontSize: 16, fontWeight: '900', color: C.purple}]}>
-                ₹{amount}
+                ₹{appliedCoupon ? amountToPay : amount}
               </Text>
             </View>
+          </View>
+        )}
+
+        {/* Savings Corner */}
+        {!isArrivalOnly && (
+          <View style={s.savingsCorner}>
+            <View style={s.savingsHeader}>
+              <Text style={s.savingsTitle}>💰 Savings Corner</Text>
+              {discount > 0 && (
+                <View style={s.savingsBadge}>
+                  <Text style={s.savingsBadgeTxt}>-₹{discount} saved</Text>
+                </View>
+              )}
+            </View>
+
+            <TouchableOpacity
+              style={s.couponRowBtn}
+              onPress={() =>
+                navigation.navigate(ScreenNameEnum.ApplyCouponScreen, {amount: baseAmount})
+              }
+              activeOpacity={0.82}>
+              <Icon name="pricetag-outline" size={18} color={C.purple} />
+              <Text style={s.couponRowTxt}>Apply Coupon</Text>
+              <Icon name="chevron-forward" size={16} color={C.sub} />
+            </TouchableOpacity>
+
+            {appliedCoupon && (
+              <View style={s.savingsAppliedRow}>
+                <Icon name="checkmark-circle" size={15} color={C.green} />
+                <Text style={s.appliedTag}>{appliedCoupon.code}</Text>
+                <Text style={s.appliedSaving}>-₹{appliedCoupon.discount} off</Text>
+                <TouchableOpacity onPress={() => setAppliedCoupon(null)} style={s.removeBtn}>
+                  <Icon name="close-circle" size={16} color={C.sub} />
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Payment Offers */}
+        {!isArrivalOnly && (
+          <View style={s.payOffersCard}>
+            <Text style={s.payOffersTitle}>💳 Payment Offers</Text>
+            {PAYMENT_OFFERS.map((offer, i) => (
+              <View
+                key={offer.name}
+                style={[s.payOfferRow, i < PAYMENT_OFFERS.length - 1 && s.payOfferBorder]}>
+                <Text style={s.payOfferIcon}>{offer.icon}</Text>
+                <View style={s.payOfferInfo}>
+                  <Text style={s.payOfferName}>{offer.name}</Text>
+                  <Text style={s.payOfferDesc}>{offer.desc}</Text>
+                </View>
+                <View style={s.payOfferTag}>
+                  <Text style={s.payOfferTagTxt}>{offer.tag}</Text>
+                </View>
+              </View>
+            ))}
           </View>
         )}
 
@@ -829,4 +909,88 @@ const s = StyleSheet.create({
   distPill: {flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#fff3e0', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20},
   distTxt: {fontSize: 13, fontWeight: '700', color: C.orange},
   onWayTxt: {fontSize: 13, color: C.sub},
+
+  // ── Savings Corner ───────────────────────────────────────────────────────────
+  savingsCorner: {
+    backgroundColor: C.card,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 12,
+    elevation: 2,
+  },
+  savingsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  savingsTitle: {fontSize: 15, fontWeight: '800', color: C.text},
+  savingsBadge: {
+    backgroundColor: '#e8fbf0',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+  },
+  savingsBadgeTxt: {fontSize: 12, fontWeight: '800', color: C.green},
+
+  couponRowBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 11,
+    borderTopWidth: 1,
+    borderTopColor: C.border,
+  },
+  couponRowTxt: {flex: 1, fontSize: 14, fontWeight: '700', color: C.text},
+
+  savingsAppliedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    backgroundColor: '#f0fdf4',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+  },
+  appliedTag: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: C.green,
+    letterSpacing: 0.5,
+  },
+  appliedSaving: {flex: 1, fontSize: 12, fontWeight: '700', color: C.green},
+  removeBtn: {padding: 2},
+
+  // ── Payment Offers ───────────────────────────────────────────────────────────
+  payOffersCard: {
+    backgroundColor: C.card,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 12,
+    elevation: 2,
+  },
+  payOffersTitle: {fontSize: 15, fontWeight: '800', color: C.text, marginBottom: 10},
+  payOfferRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 10,
+  },
+  payOfferBorder: {borderBottomWidth: 1, borderBottomColor: C.border},
+  payOfferIcon: {fontSize: 24},
+  payOfferInfo: {flex: 1},
+  payOfferName: {fontSize: 13, fontWeight: '700', color: C.text, marginBottom: 2},
+  payOfferDesc: {fontSize: 11, color: C.sub},
+  payOfferTag: {
+    backgroundColor: C.purpleL,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  payOfferTagTxt: {fontSize: 11, fontWeight: '800', color: C.purple},
 });

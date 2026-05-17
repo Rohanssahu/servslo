@@ -30,6 +30,8 @@ import ServiceBookingScreen from "../screen/bookingflow/ServiceBookingScreen";
 import ArrivalChargesScreen from "../screen/bookingflow/ArrivalChargesScreen";
 import PoliciesScreen from "../screen/Feature/PoliciesScreen";
 import NearbyProvidersScreen from "../screen/Feature/NearbyProvidersScreen";
+import ApplyCouponScreen from "../screen/bookingflow/ApplyCouponScreen";
+import RecurringBookingScreen from "../screen/bookingflow/RecurringBookingScreen";
 import TabNavigator from "../navigators/TabNavigator";
 
 const _routes = {
@@ -61,6 +63,8 @@ const _routes = {
     { name: ScreenNameEnum.ArrivalChargesScreen, Component: ArrivalChargesScreen },
     { name: ScreenNameEnum.PoliciesScreen, Component: PoliciesScreen },
     { name: ScreenNameEnum.NearbyProvidersScreen, Component: NearbyProvidersScreen },
+    { name: ScreenNameEnum.ApplyCouponScreen, Component: ApplyCouponScreen },
+    { name: ScreenNameEnum.RecurringBookingScreen, Component: RecurringBookingScreen },
   ],
 
   BOTTOM_TAB: [

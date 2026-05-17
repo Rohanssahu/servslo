@@ -28,7 +28,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import ScreenNameEnum from '../../routes/screenName.enum';
 
-const {width, height} = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 const SHEET_HEIGHT = height * 0.46;
 
 // ─── Color tokens ─────────────────────────────────────────────────────────────
@@ -68,7 +68,7 @@ type Provider = {
 
 const STATUS_META: Record<
   ProviderStatus,
-  {label: string; color: string; bg: string; icon: string}
+  { label: string; color: string; bg: string; icon: string }
 > = {
   available: {
     label: 'Available',
@@ -90,7 +90,7 @@ const STATUS_META: Record<
   },
 };
 
-const USER_LOC = {latitude: 19.1723, longitude: 72.9446};
+const USER_LOC = { latitude: 19.1723, longitude: 72.9446 };
 
 const INIT_PROVIDERS: Provider[] = [
   {
@@ -171,12 +171,12 @@ const INIT_PROVIDERS: Provider[] = [
 ];
 
 const CATEGORY_FILTERS = [
-  {key: 'all', label: '🗺 All'},
-  {key: 'Electrician', label: '⚡ Electrician'},
-  {key: 'Plumber', label: '🔧 Plumber'},
-  {key: 'AC Expert', label: '❄️ AC'},
-  {key: 'Cleaner', label: '🧹 Cleaner'},
-  {key: 'Carpenter', label: '🪚 Carpenter'},
+  { key: 'all', label: '🗺 All' },
+  { key: 'Electrician', label: '⚡ Electrician' },
+  { key: 'Plumber', label: '🔧 Plumber' },
+  { key: 'AC Expert', label: '❄️ AC' },
+  { key: 'Cleaner', label: '🧹 Cleaner' },
+  { key: 'Carpenter', label: '🪚 Carpenter' },
 ];
 
 // ─── User location marker ─────────────────────────────────────────────────────
@@ -207,7 +207,7 @@ function UserMarker() {
         style={[
           mk.userRing,
           {
-            transform: [{scale: pulse}],
+            transform: [{ scale: pulse }],
             opacity: pulse.interpolate({
               inputRange: [1, 2.4],
               outputRange: [0.5, 0],
@@ -279,7 +279,7 @@ function ProviderMarker({
           style={[
             mk.provRing,
             {
-              transform: [{scale: pulse}],
+              transform: [{ scale: pulse }],
               opacity: pulse.interpolate({
                 inputRange: [1, 1.7],
                 outputRange: [0.4, 0],
@@ -301,12 +301,12 @@ function ProviderMarker({
           },
         ]}>
         {provider.status === 'on_way' ? (
-          <Text style={{fontSize: 16}}>🚗</Text>
+          <Text style={{ fontSize: 16 }}>🚗</Text>
         ) : (
           <Text
             style={[
               mk.provInitial,
-              {color: isSelected ? '#fff' : meta.color},
+              { color: isSelected ? '#fff' : meta.color },
             ]}>
             {provider.initial}
           </Text>
@@ -314,13 +314,13 @@ function ProviderMarker({
       </View>
 
       {/* Service emoji badge */}
-      <View style={[mk.emojiBadge, {backgroundColor: meta.bg}]}>
-        <Text style={{fontSize: 8}}>{provider.emoji}</Text>
+      <View style={[mk.emojiBadge, { backgroundColor: meta.bg }]}>
+        <Text style={{ fontSize: 8 }}>{provider.emoji}</Text>
       </View>
 
       {/* ETA callout for selected */}
       {isSelected && (
-        <View style={[mk.etaCallout, {backgroundColor: meta.color}]}>
+        <View style={[mk.etaCallout, { backgroundColor: meta.color }]}>
           <Text style={mk.etaCalloutTxt}>{provider.eta} min</Text>
         </View>
       )}
@@ -356,21 +356,22 @@ function ProviderCard({
         {provider.emoji} {provider.category}
       </Text>
       <Text style={st.pCardRating}>⭐ {provider.rating}</Text>
-      <View style={[st.pCardBadge, {backgroundColor: meta.bg}]}>
+      <View style={[st.pCardBadge, { backgroundColor: meta.bg }]}>
         <Ionicons name={meta.icon as any} size={9} color={meta.color} />
-        <Text style={[st.pCardBadgeTxt, {color: meta.color}]}>
+        <Text style={[st.pCardBadgeTxt, { color: meta.color }]}>
           {meta.label}
         </Text>
       </View>
       <View style={st.pCardFooter}>
         <Text style={st.pCardEta}>🕐 {provider.eta} min</Text>
-        <TouchableOpacity
-          style={st.pCardBookBtn}
-          onPress={onBook}
-          activeOpacity={0.9}>
-          <Text style={st.pCardBookTxt}>Book</Text>
-        </TouchableOpacity>
+
       </View>
+      <TouchableOpacity
+        style={st.pCardBookBtn}
+        onPress={onBook}
+        activeOpacity={0.9}>
+        <Text style={st.pCardBookTxt}>Book</Text>
+      </TouchableOpacity>
     </TouchableOpacity>
   );
 }
@@ -413,7 +414,7 @@ function SelectedProviderCard({
     <Animated.View
       style={[
         st.selCard,
-        {opacity: fade, transform: [{translateY: slide}]},
+        { opacity: fade, transform: [{ translateY: slide }] },
       ]}>
       {/* Header row */}
       <View style={st.selHeader}>
@@ -425,9 +426,9 @@ function SelectedProviderCard({
           <Text style={st.selMeta}>
             ⭐ {provider.rating}  ·  {provider.jobs} jobs done
           </Text>
-          <View style={[st.selBadge, {backgroundColor: meta.bg}]}>
+          <View style={[st.selBadge, { backgroundColor: meta.bg }]}>
             <Ionicons name={meta.icon as any} size={10} color={meta.color} />
-            <Text style={[st.selBadgeTxt, {color: meta.color}]}>
+            <Text style={[st.selBadgeTxt, { color: meta.color }]}>
               {meta.label}
             </Text>
           </View>
@@ -667,7 +668,7 @@ export default function NearbyProvidersScreen({
         {/* User location */}
         <Marker
           coordinate={USER_LOC}
-          anchor={{x: 0.5, y: 0.5}}
+          anchor={{ x: 0.5, y: 0.5 }}
           tracksViewChanges={false}>
           <UserMarker />
         </Marker>
@@ -676,8 +677,8 @@ export default function NearbyProvidersScreen({
         {providers.map(prov => (
           <Marker
             key={prov.id}
-            coordinate={{latitude: prov.lat, longitude: prov.lng}}
-            anchor={{x: 0.5, y: 1.1}}
+            coordinate={{ latitude: prov.lat, longitude: prov.lng }}
+            anchor={{ x: 0.5, y: 1.1 }}
             onPress={() => handleMarkerPress(prov)}
             tracksViewChanges={selectedId === prov.id}>
             <ProviderMarker
@@ -705,7 +706,7 @@ export default function NearbyProvidersScreen({
       </MapView>
 
       {/* ── Top header ───────────────────────────────────────── */}
-      <Animated.View style={[st.topHeader, {opacity: headerFade}]}>
+      <Animated.View style={[st.topHeader, { opacity: headerFade }]}>
         <SafeAreaView>
           <LinearGradient
             colors={[
@@ -751,7 +752,7 @@ export default function NearbyProvidersScreen({
 
       {/* ── Bottom sheet ─────────────────────────────────────── */}
       <Animated.View
-        style={[st.sheet, {transform: [{translateY: sheetY}]}]}>
+        style={[st.sheet, { transform: [{ translateY: sheetY }] }]}>
         {/* Drag handle */}
         <View style={st.handle} />
 
@@ -858,7 +859,7 @@ const mk = StyleSheet.create({
     shadowColor: '#000',
     shadowOpacity: 0.2,
     shadowRadius: 4,
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
   },
   userLabel: {
     position: 'absolute',
@@ -897,7 +898,7 @@ const mk = StyleSheet.create({
     shadowColor: '#000',
     shadowOpacity: 0.2,
     shadowRadius: 4,
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
   },
   provInitial: {
     fontSize: 16,
@@ -931,7 +932,7 @@ const mk = StyleSheet.create({
 
 // ─── Screen styles ────────────────────────────────────────────────────────────
 const st = StyleSheet.create({
-  root: {flex: 1, backgroundColor: '#e8e8e8'},
+  root: { flex: 1, backgroundColor: '#e8e8e8' },
 
   // Top header
   topHeader: {
@@ -959,9 +960,9 @@ const st = StyleSheet.create({
     shadowColor: '#000',
     shadowOpacity: 0.12,
     shadowRadius: 6,
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
   },
-  topCenter: {flex: 1, alignItems: 'center'},
+  topCenter: { flex: 1, alignItems: 'center' },
   topTitle: {
     fontSize: 17,
     fontWeight: '900',
@@ -980,7 +981,7 @@ const st = StyleSheet.create({
     borderRadius: 3.5,
     backgroundColor: C.green,
   },
-  liveTxt: {fontSize: 12, color: C.sub, fontWeight: '600'},
+  liveTxt: { fontSize: 12, color: C.sub, fontWeight: '600' },
   recenterBtn: {
     width: 40,
     height: 40,
@@ -992,7 +993,7 @@ const st = StyleSheet.create({
     shadowColor: '#000',
     shadowOpacity: 0.12,
     shadowRadius: 6,
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
   },
 
   // Live badge
@@ -1011,7 +1012,7 @@ const st = StyleSheet.create({
     shadowColor: '#000',
     shadowOpacity: 0.1,
     shadowRadius: 6,
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
   },
   liveBadgeDot: {
     width: 7,
@@ -1040,7 +1041,7 @@ const st = StyleSheet.create({
     shadowColor: '#000',
     shadowOpacity: 0.18,
     shadowRadius: 20,
-    shadowOffset: {width: 0, height: -6},
+    shadowOffset: { width: 0, height: -6 },
     overflow: 'hidden',
   },
   handle: {
@@ -1063,6 +1064,7 @@ const st = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 7,
     borderRadius: 20,
+    height: 32,
     backgroundColor: '#f4f4f8',
     borderWidth: 1.5,
     borderColor: 'transparent',
@@ -1076,7 +1078,7 @@ const st = StyleSheet.create({
     fontWeight: '700',
     color: C.sub,
   },
-  filterChipTxtActive: {color: C.purple},
+  filterChipTxtActive: { color: C.purple },
 
   // Sheet header
   sheetHead: {
@@ -1106,7 +1108,7 @@ const st = StyleSheet.create({
     borderRadius: 3.5,
     backgroundColor: C.green,
   },
-  onlineTxt: {fontSize: 11, fontWeight: '800', color: C.green},
+  onlineTxt: { fontSize: 11, fontWeight: '800', color: C.green },
 
   // Provider cards (horizontal scroll)
   cardScroll: {
@@ -1118,36 +1120,39 @@ const st = StyleSheet.create({
     width: 148,
     backgroundColor: '#fafafa',
     borderRadius: 18,
-    padding: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 15,
     borderWidth: 1.5,
     borderColor: C.border,
     elevation: 2,
     shadowColor: '#000',
     shadowOpacity: 0.05,
     shadowRadius: 6,
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
+
   },
   pCardSel: {
     borderColor: C.purple,
     backgroundColor: C.purpleL,
   },
   pCardAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     alignItems: 'center',
     justifyContent: 'center',
+    alignSelf: 'center',
     marginBottom: 8,
   },
-  pCardAvatarTxt: {fontSize: 20, fontWeight: '900', color: '#fff'},
+  pCardAvatarTxt: { fontSize: 22, fontWeight: '900', color: '#fff' },
   pCardName: {
-    fontSize: 13,
+    fontSize: 15,
     fontWeight: '800',
     color: C.text,
     marginBottom: 2,
   },
-  pCardCat: {fontSize: 11, color: C.sub, marginBottom: 2},
-  pCardRating: {fontSize: 11, color: C.sub, marginBottom: 6},
+  pCardCat: { fontSize: 14, color: C.sub, marginBottom: 2 },
+  pCardRating: { fontSize: 14, color: C.sub, marginBottom: 6 },
   pCardBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1158,20 +1163,23 @@ const st = StyleSheet.create({
     alignSelf: 'flex-start',
     marginBottom: 8,
   },
-  pCardBadgeTxt: {fontSize: 10, fontWeight: '700'},
+  pCardBadgeTxt: { fontSize: 10, fontWeight: '700' },
   pCardFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  pCardEta: {fontSize: 11, fontWeight: '600', color: C.sub},
+  pCardEta: { fontSize: 13, fontWeight: '600', color: C.sub },
   pCardBookBtn: {
     backgroundColor: C.purple,
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10
   },
-  pCardBookTxt: {color: '#fff', fontWeight: '800', fontSize: 11},
+  pCardBookTxt: { color: '#fff', fontWeight: '800', fontSize: 15 },
 
   // Selected provider card
   selCard: {
@@ -1195,10 +1203,10 @@ const st = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  selAvatarTxt: {fontSize: 24, fontWeight: '900', color: '#fff'},
-  selInfo: {flex: 1},
-  selName: {fontSize: 17, fontWeight: '900', color: C.text, marginBottom: 2},
-  selMeta: {fontSize: 12, color: C.sub, marginBottom: 5},
+  selAvatarTxt: { fontSize: 24, fontWeight: '900', color: '#fff' },
+  selInfo: { flex: 1 },
+  selName: { fontSize: 17, fontWeight: '900', color: C.text, marginBottom: 2 },
+  selMeta: { fontSize: 12, color: C.sub, marginBottom: 5 },
   selBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1208,8 +1216,8 @@ const st = StyleSheet.create({
     borderRadius: 12,
     alignSelf: 'flex-start',
   },
-  selBadgeTxt: {fontSize: 11, fontWeight: '700'},
-  selActions: {gap: 6},
+  selBadgeTxt: { fontSize: 11, fontWeight: '700' },
+  selActions: { gap: 6 },
   callBtn: {
     width: 36,
     height: 36,
@@ -1238,18 +1246,18 @@ const st = StyleSheet.create({
     paddingVertical: 12,
     marginBottom: 14,
   },
-  statBox: {flex: 1, alignItems: 'center'},
+  statBox: { flex: 1, alignItems: 'center' },
   statVal: {
     fontSize: 14,
     fontWeight: '900',
     color: C.purple,
     marginBottom: 2,
   },
-  statLbl: {fontSize: 10, color: C.sub, fontWeight: '600'},
-  statDivider: {width: 1, height: 32, backgroundColor: C.border},
+  statLbl: { fontSize: 10, color: C.sub, fontWeight: '600' },
+  statDivider: { width: 1, height: 32, backgroundColor: C.border },
 
   // Book CTA
-  bookNowBtn: {borderRadius: 14, overflow: 'hidden'},
+  bookNowBtn: { borderRadius: 14, overflow: 'hidden' },
   bookNowGrad: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1258,5 +1266,5 @@ const st = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 14,
   },
-  bookNowTxt: {color: '#fff', fontWeight: '900', fontSize: 15},
+  bookNowTxt: { color: '#fff', fontWeight: '900', fontSize: 15 },
 });

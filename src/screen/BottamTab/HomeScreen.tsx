@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useRef, useState} from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   SafeAreaView,
   View,
@@ -19,10 +19,11 @@ import ScreenNameEnum from '../../routes/screenName.enum';
 import LinearGradient from 'react-native-linear-gradient';
 import ServiceBottomSheet, {
   ServiceBottomSheetRef,
+  DailyServiceKey,
 } from '../Feature/ServiceBottomSheet';
-import {useIsFocused} from '@react-navigation/native';
+import { useIsFocused } from '@react-navigation/native';
 import SpeakerButton from '../../component/SpeakerButton';
-import {useLanguage} from '../../language/LanguageContext';
+import { useLanguage } from '../../language/LanguageContext';
 import languageStrings from '../../language/languageStrings';
 import Voice from '@react-native-voice/voice';
 import SmartSearchBar from '../../component/SmartSearchBar';
@@ -44,20 +45,46 @@ import {
   ContextualPromo,
   ScrollPromoToast,
 } from '../../component/CampaignSystem';
+import WomenCampaignBanner from '../../component/WomenCampaignBanner';
 
-const {width} = Dimensions.get('window');
-const BOOKED_W = 158;
+const { width } = Dimensions.get('window');
+const BOOKED_W = 170;
+
+const BOOKED_GRADIENTS: readonly [string, string][] = [
+  ['#7C3AED', '#A855F7'],
+  ['#0891B2', '#06B6D4'],
+  ['#D97706', '#F59E0B'],
+];
 
 const DEALS = [
-  {time: '60 min', price: '₹149', old: '₹169', off: '11% OFF', label: 'Basic Clean'},
-  {time: '90 min', price: '₹219', old: '₹255', off: '14% OFF', label: 'Deep Clean'},
-  {time: '120 min', price: '₹289', old: '₹320', off: '10% OFF', label: 'Full Home'},
+  { time: '60 min', price: '₹149', old: '₹169', off: '11% OFF', label: 'Basic Clean' },
+  { time: '90 min', price: '₹219', old: '₹255', off: '14% OFF', label: 'Deep Clean' },
+  { time: '120 min', price: '₹289', old: '₹320', off: '10% OFF', label: 'Full Home' },
 ];
 
 const MOST_BOOKED = [
-  {title: 'Bathroom Deep Clean', rating: '4.8', reviews: '2.8M', price: '₹519', emoji: '🚿'},
-  {title: '2 Bathroom Cleaning', rating: '4.8', reviews: '2.8M', price: '₹950', oldPrice: '₹1,038', off: '8% OFF', emoji: '🏠'},
-  {title: 'Washing Machine Clean', rating: '4.8', reviews: '319K', price: '₹160', emoji: '🫧'},
+  { title: 'Bathroom Deep Clean', rating: '4.8', reviews: '2.8M', bookings: '12K+', price: '₹519', emoji: '🚿', svcKey: 'bathroom' as DailyServiceKey },
+  { title: '2 Bathroom Cleaning', rating: '4.8', reviews: '2.8M', bookings: '8K+', price: '₹950', oldPrice: '₹1,038', off: '8% OFF', emoji: '🏠', svcKey: 'bathroom' as DailyServiceKey },
+  { title: 'Washing Machine Clean', rating: '4.8', reviews: '319K', bookings: '5K+', price: '₹160', emoji: '🫧', svcKey: null as DailyServiceKey | null },
+];
+
+const DAILY_HOME_SERVICES: { key: DailyServiceKey; emoji: string; title: string; titleHi: string; price: string }[] = [
+  { key: 'safai', emoji: '🧹', title: 'Daily Safai', titleHi: 'रोज़ की सफाई', price: '₹199' },
+  { key: 'bartan', emoji: '🍽️', title: 'Bartan Dhona', titleHi: 'बर्तन धोना', price: '₹149' },
+  { key: 'kapde', emoji: '👕', title: 'Kapde Dhona', titleHi: 'कपड़े धोना', price: '₹199' },
+  { key: 'bathroom', emoji: '🚿', title: 'Bathroom', titleHi: 'बाथरूम सफाई', price: '₹249' },
+  { key: 'kitchen', emoji: '🍳', title: 'Kitchen Clean', titleHi: 'किचन सफाई', price: '₹299' },
+  { key: 'khana', emoji: '👨‍🍳', title: 'Khana Banana', titleHi: 'खाना बनाना', price: '₹349' },
+];
+
+
+const SUBSCRIPTION_SERVICES = [
+  {emoji: '🧹', name: 'Daily Safai', freq: 'Daily', discount: '15% OFF', price: 169, svcKey: 'safai' as DailyServiceKey},
+  {emoji: '🍽️', name: 'Bartan Service', freq: 'Daily', discount: '10% OFF', price: 134, svcKey: 'bartan' as DailyServiceKey},
+  {emoji: '👕', name: 'Laundry', freq: 'Weekly', discount: '20% OFF', price: 159, svcKey: 'kapde' as DailyServiceKey},
+  {emoji: '🍳', name: 'Daily Cooking', freq: 'Daily', discount: '15% OFF', price: 299, svcKey: 'khana' as DailyServiceKey},
+  {emoji: '🏠', name: 'Weekly Clean', freq: 'Weekly', discount: '25% OFF', price: 224, svcKey: 'safai' as DailyServiceKey},
+  {emoji: '👴', name: 'Elder Care', freq: 'Daily', discount: '10% OFF', price: 269, svcKey: 'safai' as DailyServiceKey},
 ];
 
 const HOME_SCRIPT_HI =
@@ -126,11 +153,11 @@ const WALKTHROUGH_STEPS: WalkthroughStepConfig[] = [
   },
 ];
 
-export default function HomeScreen({navigation}: {navigation: any}) {
+export default function HomeScreen({ navigation }: { navigation: any }) {
   const sheetRef = useRef<ServiceBottomSheetRef>(null);
   const searchInputRef = useRef<TextInput>(null);
   const isFocus = useIsFocused();
-  const {lang} = useLanguage();
+  const { lang } = useLanguage();
   const t = languageStrings[lang];
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
@@ -151,13 +178,13 @@ export default function HomeScreen({navigation}: {navigation: any}) {
 
   // ── Walkthrough logic ─────────────────────────────────────────────────────
   // Keep a ref to the latest measureStep so callbacks never use a stale copy
-  const measureStepRef = useRef<(stepIndex: number) => void>(() => {});
+  const measureStepRef = useRef<(stepIndex: number) => void>(() => { });
 
   // Inline function — re-created each render so refs are always fresh
   const measureStep = (stepIndex: number) => {
     // Scroll amounts that bring each element near the top of the ScrollView
     // (animated: false → instant, so we measure on the next frame, not after a timer)
-    const scrollTargets: Record<number, number> = {2: 0, 3: 240, 4: 500};
+    const scrollTargets: Record<number, number> = { 2: 0, 3: 240, 4: 500 };
     const stepRefs = [
       addressRef,
       searchAreaRef,
@@ -174,7 +201,7 @@ export default function HomeScreen({navigation}: {navigation: any}) {
     const scrollY = scrollTargets[stepIndex];
     if (scrollY !== undefined && mainScrollRef.current) {
       // Instant scroll — no animation so the position is settled on the next frame
-      mainScrollRef.current.scrollTo({y: scrollY, animated: false});
+      mainScrollRef.current.scrollTo({ y: scrollY, animated: false });
     }
 
     // Two requestAnimationFrame calls ensure the layout pass has completed
@@ -209,7 +236,7 @@ export default function HomeScreen({navigation}: {navigation: any}) {
     if (next >= WALKTHROUGH_STEPS.length) {
       setWalkthroughVisible(false);
       AsyncStorage.setItem('wtSeen_v1', '1');
-      mainScrollRef.current?.scrollTo({y: 0, animated: true});
+      mainScrollRef.current?.scrollTo({ y: 0, animated: true });
     } else {
       setSpotlightRect(null);
       setWalkthroughStep(next);
@@ -221,7 +248,7 @@ export default function HomeScreen({navigation}: {navigation: any}) {
   const handleWalkthroughSkip = useCallback(() => {
     setWalkthroughVisible(false);
     AsyncStorage.setItem('wtSeen_v1', '1');
-    mainScrollRef.current?.scrollTo({y: 0, animated: true});
+    mainScrollRef.current?.scrollTo({ y: 0, animated: true });
   }, []);
 
   // Show walkthrough on first open
@@ -288,37 +315,37 @@ export default function HomeScreen({navigation}: {navigation: any}) {
 
   // ── Translated data arrays ────────────────────────────────────────────────
   const QUICK_SERVICES = [
-    {label: t.electrician, emoji: '⚡', desc: t.wiringRepairs, rating: '4.8', basePrice: 199},
-    {label: t.plumber, emoji: '🔧', desc: t.leaksPipesTaps, rating: '4.7', basePrice: 149},
-    {label: t.cleaning, emoji: '🧹', desc: t.fullHomeClean, rating: '4.9', basePrice: 299},
-    {label: t.acRepair, emoji: '❄️', desc: t.serviceRepair, rating: '4.8', basePrice: 349},
-    {label: t.carpenter, emoji: '🪚', desc: t.furnitureDoors, rating: '4.6', basePrice: 249},
-    {label: t.painting, emoji: '🖌️', desc: t.interiorExterior, rating: '4.7', basePrice: 499},
-    {label: t.pestControl, emoji: '🐛', desc: t.allPestTypes, rating: '4.8', basePrice: 599},
-    {label: t.more, emoji: '➕', desc: '', rating: '4.8', basePrice: 0},
+    { label: t.electrician, emoji: '⚡', desc: t.wiringRepairs, rating: '4.8', basePrice: 199 },
+    { label: t.plumber, emoji: '🔧', desc: t.leaksPipesTaps, rating: '4.7', basePrice: 149 },
+    { label: t.cleaning, emoji: '🧹', desc: t.fullHomeClean, rating: '4.9', basePrice: 299 },
+    { label: t.acRepair, emoji: '❄️', desc: t.serviceRepair, rating: '4.8', basePrice: 349 },
+    { label: t.carpenter, emoji: '🪚', desc: t.furnitureDoors, rating: '4.6', basePrice: 249 },
+    { label: t.painting, emoji: '🖌️', desc: t.interiorExterior, rating: '4.7', basePrice: 499 },
+    { label: t.pestControl, emoji: '🐛', desc: t.allPestTypes, rating: '4.8', basePrice: 599 },
+    { label: t.more, emoji: '➕', desc: '', rating: '4.8', basePrice: 0 },
   ];
   const SALON_ITEMS = [
-    {label: t.waxing, emoji: '✨'},
-    {label: t.facial, emoji: '💆'},
-    {label: t.manicure, emoji: '💅'},
-    {label: t.pedicure, emoji: '🦶'},
+    { label: t.waxing, emoji: '✨' },
+    { label: t.facial, emoji: '💆' },
+    { label: t.manicure, emoji: '💅' },
+    { label: t.pedicure, emoji: '🦶' },
   ];
   const APPLIANCE_ITEMS = [
-    {label: t.acService, emoji: '❄️'},
-    {label: t.washingMachine, emoji: '🫧'},
-    {label: t.waterPurifier, emoji: '💧'},
-    {label: t.fridgeRepair, emoji: '🧊'},
+    { label: t.acService, emoji: '❄️' },
+    { label: t.washingMachine, emoji: '🫧' },
+    { label: t.waterPurifier, emoji: '💧' },
+    { label: t.fridgeRepair, emoji: '🧊' },
   ];
   const SMALL_TILES = [
-    {label: t.laundry, emoji: '👕'},
-    {label: t.dishwashing, emoji: '🍽️'},
-    {label: t.bathroom, emoji: '🚿'},
-    {label: t.kitchen, emoji: '🍳'},
+    { key: 'kapde', label: t.laundry, emoji: '👕' },
+    { key: 'bartan', label: t.dishwashing, emoji: '🍽️' },
+    { key: 'bathroom', label: t.bathroom, emoji: '🚿' },
+    { key: 'kitchen', label: t.kitchen, emoji: '🍳' },
   ];
   const TRUST_ITEMS = [
-    {icon: '⚡', text: t.trustResponse},
-    {icon: '✅', text: t.trustVerified},
-    {icon: '🏠', text: t.trustFamilies},
+    { icon: '⚡', text: t.trustResponse },
+    { icon: '✅', text: t.trustVerified },
+    { icon: '🏠', text: t.trustFamilies },
   ];
 
   useEffect(() => {
@@ -376,7 +403,7 @@ export default function HomeScreen({navigation}: {navigation: any}) {
   const stopListening = async () => {
     try {
       await Voice.stop();
-    } catch {}
+    } catch { }
     setIsListening(false);
   };
 
@@ -417,7 +444,7 @@ export default function HomeScreen({navigation}: {navigation: any}) {
   const handleServiceSelect = async (svc: ServiceResult) => {
     await addRecentSearch(searchText || svc.label);
     handleSearchCancel();
-    navigation.navigate(ScreenNameEnum.ServiceBookingScreen, {service: svc});
+    navigation.navigate(ScreenNameEnum.ServiceBookingScreen, { service: svc });
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -428,8 +455,8 @@ export default function HomeScreen({navigation}: {navigation: any}) {
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <LinearGradient
         colors={['#6E39F7', '#8E57FF', '#B78CFF']}
-        start={{x: 0.1, y: 0}}
-        end={{x: 1, y: 1}}
+        start={{ x: 0.1, y: 0 }}
+        end={{ x: 1, y: 1 }}
         style={s.header}>
         <View ref={addressRef} collapsable={false}>
           <TouchableOpacity
@@ -498,7 +525,7 @@ export default function HomeScreen({navigation}: {navigation: any}) {
               {/* Voice hint banner */}
               <View style={s.voiceBanner}>
                 <Text style={s.voiceBannerIcon}>🎙️</Text>
-                <View style={{flex: 1}}>
+                <View style={{ flex: 1 }}>
                   <Text style={s.voiceBannerTitle}>
                     {lang === 'hi' ? 'माइक टैप करें और बोलें' : 'Tap mic and speak naturally'}
                   </Text>
@@ -555,12 +582,12 @@ export default function HomeScreen({navigation}: {navigation: any}) {
                 </Text>
                 <View style={s.catRow}>
                   {[
-                    {emoji: '⚡', label: lang === 'hi' ? 'बिजली' : 'Electrical'},
-                    {emoji: '🔧', label: lang === 'hi' ? 'प्लंबर' : 'Plumbing'},
-                    {emoji: '🧹', label: lang === 'hi' ? 'सफाई' : 'Cleaning'},
-                    {emoji: '❄️', label: lang === 'hi' ? 'AC' : 'AC'},
-                    {emoji: '💆', label: lang === 'hi' ? 'सैलून' : 'Salon'},
-                    {emoji: '🛠️', label: lang === 'hi' ? 'उपकरण' : 'Appliance'},
+                    { emoji: '⚡', label: lang === 'hi' ? 'बिजली' : 'Electrical' },
+                    { emoji: '🔧', label: lang === 'hi' ? 'प्लंबर' : 'Plumbing' },
+                    { emoji: '🧹', label: lang === 'hi' ? 'सफाई' : 'Cleaning' },
+                    { emoji: '❄️', label: lang === 'hi' ? 'AC' : 'AC' },
+                    { emoji: '💆', label: lang === 'hi' ? 'सैलून' : 'Salon' },
+                    { emoji: '🛠️', label: lang === 'hi' ? 'उपकरण' : 'Appliance' },
                   ].map((cat, i) => (
                     <TouchableOpacity
                       key={i}
@@ -646,7 +673,7 @@ export default function HomeScreen({navigation}: {navigation: any}) {
                 style={s.browsAllBtn}
                 onPress={() => {
                   handleSearchCancel();
-                  navigation.navigate(ScreenNameEnum.AllServicesScreen, {category: 'all', title: 'All Services'});
+                  navigation.navigate(ScreenNameEnum.AllServicesScreen, { category: 'all', title: 'All Services' });
                 }}>
                 <Text style={s.browsAllText}>
                   {lang === 'hi' ? 'सभी सेवाएं देखें' : 'Browse all services'}
@@ -672,64 +699,16 @@ export default function HomeScreen({navigation}: {navigation: any}) {
             ))}
           </View>
 
-          {/* Flash Deal Strip */}
-          <FlashDealStrip lang={lang} />
- 
-          {/* Live Availability Card */}
-          <View style={s.liveCard} ref={liveCardRef} collapsable={false}>
-            <View style={s.liveHeader}>
-              <Animated.View
-                style={[s.liveDot, {transform: [{scale: pulseAnim}]}]}
-              />
-              <Text style={s.liveHeaderTitle}>
-                {lang === 'hi' ? 'अभी आपके पास' : 'Available Now Nearby'}
-              </Text>
-              <View style={s.liveResponsePill}>
-                <Text style={s.liveResponseTxt}>⚡ 10-min</Text>
-              </View>
-            </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={s.liveScroll}>
-              {LIVE_PROVIDERS.map((prov, i) => (
-                <TouchableOpacity
-                  key={i}
-                  style={[s.liveChip, {backgroundColor: prov.bg}]}
-                  onPress={() =>
-                    navigation.navigate(ScreenNameEnum.NearbyProvidersScreen, {
-                      category: prov.label,
-                      title: `${prov.count} ${prov.label} Nearby`,
-                    })
-                  }
-                  activeOpacity={0.82}>
-                  <Text style={s.liveChipEmoji}>{prov.emoji}</Text>
-                  <View>
-                    <Text style={[s.liveChipCount, {color: prov.tc}]}>
-                      {prov.count}
-                    </Text>
-                    <Text style={[s.liveChipLabel, {color: prov.tc}]}>
-                      {prov.label}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-              <TouchableOpacity
-                style={s.urgentChip}
-                onPress={() =>
-                  navigation.navigate(ScreenNameEnum.NearbyProvidersScreen, {
-                    category: 'all',
-                    title: 'Urgent Service',
-                  })
-                }
-                activeOpacity={0.8}>
-                <Text style={s.urgentEmoji}>🚨</Text>
-                <Text style={s.urgentLabel}>
-                  {lang === 'hi' ? 'जरूरी\nसेवा' : 'Urgent\nService'}
-                </Text>
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
+          {/* Rotating Campaign Banner (auto-cycles IPL → Monsoon → First-time) */}
+          <RotatingCampaignBanner
+            lang={lang}
+            onPress={() =>
+              navigation.navigate(ScreenNameEnum.AllServicesScreen, {
+                category: 'all',
+                title: 'All Services',
+              })
+            }
+          />
 
           {/* What do you need? */}
           <View style={s.card} ref={quickServicesRef} collapsable={false}>
@@ -761,14 +740,14 @@ export default function HomeScreen({navigation}: {navigation: any}) {
                         title: 'All Services',
                       });
                     } else {
-                      navigation.navigate(ScreenNameEnum.ServiceBookingScreen, {service: item});
+                      navigation.navigate(ScreenNameEnum.ServiceBookingScreen, { service: item });
                     }
                   }}
                   activeOpacity={0.8}>
                   <LinearGradient
                     colors={['#6E39F7', '#C084FC', '#F0ABFC']}
-                    start={{x: 0, y: 1}}
-                    end={{x: 1, y: 0}}
+                    start={{ x: 0, y: 1 }}
+                    end={{ x: 1, y: 0 }}
                     style={s.storyRing}>
                     <View style={s.storyInner}>
                       <Text style={s.storyEmoji}>{item.emoji}</Text>
@@ -782,12 +761,102 @@ export default function HomeScreen({navigation}: {navigation: any}) {
             </ScrollView>
           </View>
 
-         {/* Rotating Campaign Banner (auto-cycles IPL → Monsoon → First-time) */}
-          <RotatingCampaignBanner
-            lang={lang}
-            onPress={() => sheetRef.current?.open()}
-          />
+   {/* Our Services */}
+          <View style={s.card}>
+            <Text style={s.cardTitle}>{t.ourServices}</Text>
+            <Text style={s.cardSub}>{t.multipleServices}</Text>
+            <View style={s.bigRow}>
+              <TouchableOpacity
+                onPress={() => sheetRef.current?.open('safai')}
+                style={s.bigTile} activeOpacity={0.8}>
+                <Text style={s.bigTileText}>{t.everydayCleaning}</Text>
+                <Image
+                  source={require('../../assets/images/mop.png')}
+                  style={s.bigTileImg}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => sheetRef.current?.open('bathroom')}
+                style={s.bigTile} activeOpacity={0.8}>
+                <Text style={s.bigTileText}>{t.weeklyCleaning}</Text>
+                <Image
+                  source={require('../../assets/images/cleaning.jpg')}
+                  style={s.bigTileImg}
+                />
+              </TouchableOpacity>
+            </View>
+            <View style={s.smallRow}>
+              {SMALL_TILES.map((item, i) => (
+                <TouchableOpacity
+                  onPress={() => sheetRef.current?.open(item.key)}
+                  key={i} style={s.smallTile} activeOpacity={0.75}>
+                  <Text style={s.smallTileEmoji}>{item.emoji}</Text>
+                  <Text style={s.smallTileLabel}>{item.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
 
+       
+          {/* Live Availability Card */}
+          <View style={s.liveCard} ref={liveCardRef} collapsable={false}>
+            <View style={s.liveHeader}>
+              <Animated.View
+                style={[s.liveDot, { transform: [{ scale: pulseAnim }] }]}
+              />
+              <Text style={s.liveHeaderTitle}>
+                {lang === 'hi' ? 'अभी आपके पास' : 'Available Now Nearby'}
+              </Text>
+              <View style={s.liveResponsePill}>
+                <Text style={s.liveResponseTxt}>⚡ 10-min</Text>
+              </View>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={s.liveScroll}>
+              {LIVE_PROVIDERS.map((prov, i) => (
+                <TouchableOpacity
+                  key={i}
+                  style={[s.liveChip, { backgroundColor: prov.bg }]}
+                  onPress={() =>
+                    navigation.navigate(ScreenNameEnum.NearbyProvidersScreen, {
+                      category: prov.label,
+                      title: `${prov.count} ${prov.label} Nearby`,
+                    })
+                  }
+                  activeOpacity={0.82}>
+                  <Text style={s.liveChipEmoji}>{prov.emoji}</Text>
+                  <View>
+                    <Text style={[s.liveChipCount, { color: prov.tc }]}>
+                      {prov.count}
+                    </Text>
+                    <Text style={[s.liveChipLabel, { color: prov.tc }]}>
+                      {prov.label}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity
+                style={s.urgentChip}
+                onPress={() =>
+                  navigation.navigate(ScreenNameEnum.NearbyProvidersScreen, {
+                    category: 'all',
+                    title: 'Urgent Service',
+                  })
+                }
+                activeOpacity={0.8}>
+                <Text style={s.urgentEmoji}>🚨</Text>
+                <Text style={s.urgentLabel}>
+                  {lang === 'hi' ? 'जरूरी\nसेवा' : 'Urgent\nService'}
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+   {/* Flash Deal Strip */}
+          <FlashDealStrip lang={lang} />
+
+      
           {/* Quick Cleaning Packages */}
           <View style={s.card} ref={dealSectionRef} collapsable={false}>
             <View style={s.cardTitleRow}>
@@ -814,7 +883,7 @@ export default function HomeScreen({navigation}: {navigation: any}) {
                   </View>
                   <TouchableOpacity
                     style={s.bookBtnFill}
-                    onPress={() => sheetRef.current?.open()}
+                    onPress={() => sheetRef.current?.open('safai')}
                     activeOpacity={0.8}>
                     <Text style={s.bookBtnFillText}>{t.bookNow}</Text>
                   </TouchableOpacity>
@@ -823,9 +892,7 @@ export default function HomeScreen({navigation}: {navigation: any}) {
             </ScrollView>
           </View>
 
-          {/* Coupon Strip */}
-          <CouponStrip lang={lang} />
-
+         
           {/* Most Booked */}
           <View style={s.card}>
             <View style={s.cardTitleRow}>
@@ -848,32 +915,49 @@ export default function HomeScreen({navigation}: {navigation: any}) {
               {MOST_BOOKED.map((item, i) => (
                 <TouchableOpacity
                   key={i}
-                  style={[s.bookedCard, {width: BOOKED_W}]}
-                  onPress={() => sheetRef.current?.open()}
-                  activeOpacity={0.85}>
-                  {item.off && (
-                    <View style={s.bookedBadge}>
-                      <Text style={s.bookedBadgeText}>{item.off}</Text>
+                  style={s.bookedCard}
+                  onPress={() => {
+                    if (item.svcKey) {
+                      sheetRef.current?.open(item.svcKey);
+                    } else {
+                      navigation.navigate(ScreenNameEnum.ServiceBookingScreen, {
+                        service: { label: item.title, emoji: item.emoji, basePrice: 160, rating: item.rating },
+                      });
+                    }
+                  }}
+                  activeOpacity={0.88}>
+                  <LinearGradient
+                    colors={BOOKED_GRADIENTS[i % BOOKED_GRADIENTS.length]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={s.bookedGradientBox}>
+                    <View style={s.trendBadge}>
+                      <Text style={s.trendBadgeText}>🔥 {item.bookings}</Text>
                     </View>
-                  )}
-                  <View style={s.bookedEmojiBox}>
                     <Text style={s.bookedEmoji}>{item.emoji}</Text>
-                  </View>
-                  <Text style={s.bookedTitle} numberOfLines={2}>
-                    {item.title}
-                  </Text>
-                  <Text style={s.bookedRating}>
-                    ⭐ {item.rating} ({item.reviews})
-                  </Text>
-                  <View style={s.bookedFooter}>
-                    <View>
-                      <Text style={s.bookedPrice}>{item.price}</Text>
-                      {item.oldPrice && (
-                        <Text style={s.bookedOldPrice}>{item.oldPrice}</Text>
-                      )}
+                  </LinearGradient>
+                  <View style={s.bookedContent}>
+                    {item.off && (
+                      <View style={s.bookedOffBadge}>
+                        <Text style={s.bookedOffText}>{item.off}</Text>
+                      </View>
+                    )}
+                    <Text style={s.bookedTitle} numberOfLines={2}>{item.title}</Text>
+                    <View style={s.bookedRatingRow}>
+                      <Text style={s.bookedRatingStar}>⭐</Text>
+                      <Text style={s.bookedRatingNum}>{item.rating}</Text>
+                      <Text style={s.bookedReviews}> ({item.reviews})</Text>
                     </View>
-                    <View style={s.addBtn}>
-                      <Text style={s.addBtnText}>+</Text>
+                    <View style={s.bookedPriceRow}>
+                      <View>
+                        <Text style={s.bookedPrice}>{item.price}</Text>
+                        {item.oldPrice && (
+                          <Text style={s.bookedOldPrice}>{item.oldPrice}</Text>
+                        )}
+                      </View>
+                      <View style={s.bookNowBtn}>
+                        <Text style={s.bookNowText}>Book</Text>
+                      </View>
                     </View>
                   </View>
                 </TouchableOpacity>
@@ -881,42 +965,20 @@ export default function HomeScreen({navigation}: {navigation: any}) {
             </ScrollView>
           </View>
 
+        
+
           {/* Contextual Promo (rotates through AC / Cleaning / Electrician) */}
           <ContextualPromo
             lang={lang}
-            onPress={() => sheetRef.current?.open()}
+            onPress={() =>
+              navigation.navigate(ScreenNameEnum.AllServicesScreen, {
+                category: 'all',
+                title: 'All Services',
+              })
+            }
           />
 
-          {/* Our Services */}
-          <View style={s.card}>
-            <Text style={s.cardTitle}>{t.ourServices}</Text>
-            <Text style={s.cardSub}>{t.multipleServices}</Text>
-            <View style={s.bigRow}>
-              <TouchableOpacity style={s.bigTile} activeOpacity={0.8}>
-                <Text style={s.bigTileText}>{t.everydayCleaning}</Text>
-                <Image
-                  source={require('../../assets/images/mop.png')}
-                  style={s.bigTileImg}
-                />
-              </TouchableOpacity>
-              <TouchableOpacity style={s.bigTile} activeOpacity={0.8}>
-                <Text style={s.bigTileText}>{t.weeklyCleaning}</Text>
-                <Image
-                  source={require('../../assets/images/cleaning.jpg')}
-                  style={s.bigTileImg}
-                />
-              </TouchableOpacity>
-            </View>
-            <View style={s.smallRow}>
-              {SMALL_TILES.map((item, i) => (
-                <TouchableOpacity key={i} style={s.smallTile} activeOpacity={0.75}>
-                  <Text style={s.smallTileEmoji}>{item.emoji}</Text>
-                  <Text style={s.smallTileLabel}>{item.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
+       
           {/* Salon for Women */}
           <View style={s.card}>
             <View style={s.cardTitleRow}>
@@ -933,7 +995,12 @@ export default function HomeScreen({navigation}: {navigation: any}) {
                 <TouchableOpacity
                   key={i}
                   style={s.srvTile}
-                  onPress={() => sheetRef.current?.open()}
+                  onPress={() =>
+                    navigation.navigate(ScreenNameEnum.AllServicesScreen, {
+                      category: 'salon',
+                      title: 'Salon for Women',
+                    })
+                  }
                   activeOpacity={0.8}>
                   <View style={s.srvEmojiBox}>
                     <Text style={s.srvEmoji}>{srv.emoji}</Text>
@@ -960,7 +1027,11 @@ export default function HomeScreen({navigation}: {navigation: any}) {
                 <TouchableOpacity
                   key={i}
                   style={s.srvTile}
-                  onPress={() => sheetRef.current?.open()}
+                  onPress={() =>
+                    navigation.navigate(ScreenNameEnum.ServiceBookingScreen, {
+                      service: { label: srv.label, emoji: srv.emoji, basePrice: 299, rating: '4.8' },
+                    })
+                  }
                   activeOpacity={0.8}>
                   <View style={s.applianceEmojiBox}>
                     <Text style={s.srvEmoji}>{srv.emoji}</Text>
@@ -1032,7 +1103,7 @@ const C = {
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  safe: {flex: 1, backgroundColor: C.bg},
+  safe: { flex: 1, backgroundColor: C.bg },
 
   // Header
   header: {
@@ -1041,12 +1112,12 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  addressBlock: {flex: 1},
-  addressLabel: {color: '#fff', fontSize: 20, fontWeight: '500', marginBottom: 2},
-  addressRow: {flexDirection: 'row', alignItems: 'center', marginLeft: -5},
-  addressPin: {color: 'rgba(255,255,255,0.85)', fontSize: 13},
-  addressText: {color: '#fff', fontWeight: '700', fontSize: 14, flex: 1},
-  headerRight: {flexDirection: 'row', alignItems: 'center'},
+  addressBlock: { flex: 1 },
+  addressLabel: { color: '#fff', fontSize: 20, fontWeight: '500', marginBottom: 2 },
+  addressRow: { flexDirection: 'row', alignItems: 'center', marginLeft: -5 },
+  addressPin: { color: 'rgba(255,255,255,0.85)', fontSize: 13 },
+  addressText: { color: '#fff', fontWeight: '700', fontSize: 14, flex: 1 },
+  headerRight: { flexDirection: 'row', alignItems: 'center' },
   bellBtn: {
     marginLeft: 8,
     width: 36,
@@ -1056,8 +1127,8 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  bellText: {fontSize: 17},
-  speakerMargin: {marginLeft: 8},
+  bellText: { fontSize: 17 },
+  speakerMargin: { marginLeft: 8 },
 
   // Search area (between header and scroll)
   searchArea: {
@@ -1084,7 +1155,7 @@ const s = StyleSheet.create({
   },
 
   // Scroll
-  scroll: {paddingBottom: 96, paddingTop: 4},
+  scroll: { paddingBottom: 96, paddingTop: 4 },
 
   // Trust strip
   trustStrip: {
@@ -1097,9 +1168,9 @@ const s = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 8,
   },
-  trustItem: {flexDirection: 'row', alignItems: 'center'},
-  trustEmoji: {fontSize: 14, marginRight: 4},
-  trustText: {fontSize: 11, fontWeight: '600', color: C.purple},
+  trustItem: { flexDirection: 'row', alignItems: 'center' },
+  trustEmoji: { fontSize: 14, marginRight: 4 },
+  trustText: { fontSize: 11, fontWeight: '600', color: C.purple },
 
   // Cards (sections)
   card: {
@@ -1113,31 +1184,31 @@ const s = StyleSheet.create({
         shadowColor: '#000',
         shadowOpacity: 0.06,
         shadowRadius: 10,
-        shadowOffset: {width: 0, height: 3},
+        shadowOffset: { width: 0, height: 3 },
       },
-      android: {elevation: 3},
+      android: { elevation: 3 },
     }),
   },
-  cardTitle: {fontSize: 18, fontWeight: '800', color: C.purple, marginBottom: 4},
+  cardTitle: { fontSize: 18, fontWeight: '800', color: C.purple, marginBottom: 4 },
   cardTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 4,
   },
-  cardSub: {fontSize: 13, color: C.sub, marginBottom: 14},
-  seeAll: {fontSize: 13, fontWeight: '700', color: C.purple},
+  cardSub: { fontSize: 13, color: C.sub, marginBottom: 14 },
+  seeAll: { fontSize: 13, fontWeight: '700', color: C.purple },
   livePill: {
     backgroundColor: '#fff3e0',
     paddingHorizontal: 9,
     paddingVertical: 3,
     borderRadius: 20,
   },
-  livePillText: {fontSize: 11, fontWeight: '800', color: '#f97316'},
+  livePillText: { fontSize: 11, fontWeight: '800', color: '#f97316' },
 
   // Story-style horizontal scroll
-  storyList: {paddingVertical: 10, paddingRight: 4},
-  storyItem: {alignItems: 'center', marginRight: 18, width: 68},
+  storyList: { paddingVertical: 10, paddingRight: 4 },
+  storyItem: { alignItems: 'center', marginRight: 18, width: 68 },
   storyRing: {
     width: 68,
     height: 68,
@@ -1154,7 +1225,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  storyEmoji: {fontSize: 28},
+  storyEmoji: { fontSize: 28 },
   storyLabel: {
     fontSize: 11,
     fontWeight: '600',
@@ -1165,7 +1236,7 @@ const s = StyleSheet.create({
   },
 
   // Deal cards
-  hPad: {paddingTop: 4, paddingBottom: 4},
+  hPad: { paddingTop: 4, paddingBottom: 4 },
   dealCard: {
     width: 138,
     marginRight: 12,
@@ -1183,71 +1254,82 @@ const s = StyleSheet.create({
     borderRadius: 6,
     marginBottom: 8,
   },
-  dealBadgeText: {fontSize: 10, fontWeight: '800', color: C.green},
-  dealLabel: {fontSize: 13, fontWeight: '700', color: C.text, marginBottom: 2},
-  dealTime: {fontSize: 22, fontWeight: '800', color: C.text, marginBottom: 4},
-  dealPriceRow: {flexDirection: 'row', alignItems: 'baseline', marginBottom: 12},
-  dealPrice: {fontSize: 15, fontWeight: '800', color: C.text, marginRight: 4},
-  dealOld: {fontSize: 12, color: '#bbb', textDecorationLine: 'line-through'},
+  dealBadgeText: { fontSize: 10, fontWeight: '800', color: C.green },
+  dealLabel: { fontSize: 13, fontWeight: '700', color: C.text, marginBottom: 2 },
+  dealTime: { fontSize: 22, fontWeight: '800', color: C.text, marginBottom: 4 },
+  dealPriceRow: { flexDirection: 'row', alignItems: 'baseline', marginBottom: 12 },
+  dealPrice: { fontSize: 15, fontWeight: '800', color: C.text, marginRight: 4 },
+  dealOld: { fontSize: 12, color: '#bbb', textDecorationLine: 'line-through' },
   bookBtnFill: {
     backgroundColor: C.purple,
     borderRadius: 10,
     paddingVertical: 9,
     alignItems: 'center',
   },
-  bookBtnFillText: {color: '#fff', fontWeight: '700', fontSize: 13},
+  bookBtnFillText: { color: '#fff', fontWeight: '700', fontSize: 13 },
 
   // Most booked cards
   bookedCard: {
+    width: BOOKED_W,
     marginRight: 12,
-    backgroundColor: '#fafafa',
-    borderRadius: 14,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: C.border,
+    backgroundColor: C.card,
+    borderRadius: 18,
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOpacity: 0.12,
+        shadowRadius: 12,
+        shadowOffset: { width: 0, height: 4 },
+      },
+      android: { elevation: 5 },
+    }),
   },
-  bookedBadge: {
+  bookedGradientBox: {
+    width: '100%',
+    height: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  trendBadge: {
     position: 'absolute',
     top: 8,
-    right: 8,
+    left: 8,
+    backgroundColor: 'rgba(0,0,0,0.28)',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 20,
+  },
+  trendBadgeText: { fontSize: 10, fontWeight: '800', color: '#fff' },
+  bookedEmoji: { fontSize: 42 },
+  bookedContent: { padding: 12 },
+  bookedOffBadge: {
+    alignSelf: 'flex-start',
     backgroundColor: C.greenBg,
-    paddingHorizontal: 6,
+    paddingHorizontal: 7,
     paddingVertical: 2,
     borderRadius: 6,
-    zIndex: 1,
+    marginBottom: 6,
   },
-  bookedBadgeText: {fontSize: 10, fontWeight: '800', color: C.green},
-  bookedEmojiBox: {
-    width: '100%',
-    height: 70,
-    backgroundColor: C.purpleL,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  bookedEmoji: {fontSize: 34},
-  bookedTitle: {fontSize: 13, fontWeight: '700', color: C.text, marginBottom: 4, lineHeight: 18},
-  bookedRating: {fontSize: 11, color: C.sub, marginBottom: 6},
-  bookedFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-  },
-  bookedPrice: {fontSize: 15, fontWeight: '800', color: C.text},
-  bookedOldPrice: {fontSize: 11, color: '#bbb', textDecorationLine: 'line-through'},
-  addBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+  bookedOffText: { fontSize: 10, fontWeight: '800', color: C.green },
+  bookedTitle: { fontSize: 13, fontWeight: '700', color: C.text, lineHeight: 17, marginBottom: 5 },
+  bookedRatingRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+  bookedRatingStar: { fontSize: 10 },
+  bookedRatingNum: { fontSize: 11, fontWeight: '800', color: C.text, marginLeft: 2 },
+  bookedReviews: { fontSize: 10, color: C.sub },
+  bookedPriceRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  bookedPrice: { fontSize: 15, fontWeight: '900', color: C.text },
+  bookedOldPrice: { fontSize: 10, color: '#bbb', textDecorationLine: 'line-through', marginTop: 1 },
+  bookNowBtn: {
     backgroundColor: C.purple,
-    alignItems: 'center',
-    justifyContent: 'center',
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    borderRadius: 10,
   },
-  addBtnText: {color: '#fff', fontSize: 20, fontWeight: '700', lineHeight: 24},
+  bookNowText: { fontSize: 12, fontWeight: '700', color: '#fff' },
 
   // Our Services
-  bigRow: {flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12},
+  bigRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
   bigTile: {
     flex: 1,
     backgroundColor: C.purpleL,
@@ -1259,9 +1341,9 @@ const s = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-end',
   },
-  bigTileText: {fontSize: 15, fontWeight: '800', color: C.purple, flex: 1},
-  bigTileImg: {width: 72, height: 72, resizeMode: 'contain'},
-  smallRow: {flexDirection: 'row', justifyContent: 'space-between'},
+  bigTileText: { fontSize: 15, fontWeight: '800', color: C.purple, flex: 1 },
+  bigTileImg: { width: 72, height: 72, resizeMode: 'contain' },
+  smallRow: { flexDirection: 'row', justifyContent: 'space-between' },
   smallTile: {
     width: Math.floor((width - 80) / 4),
     backgroundColor: '#fafafa',
@@ -1271,11 +1353,11 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: C.border,
   },
-  smallTileEmoji: {fontSize: 24, marginBottom: 4},
-  smallTileLabel: {fontSize: 11, fontWeight: '600', color: C.text, textAlign: 'center'},
+  smallTileEmoji: { fontSize: 24, marginBottom: 4 },
+  smallTileLabel: { fontSize: 11, fontWeight: '600', color: C.text, textAlign: 'center' },
 
   // Service tiles
-  srvTile: {width: 90, marginRight: 12, alignItems: 'center'},
+  srvTile: { width: 90, marginRight: 12, alignItems: 'center' },
   srvEmojiBox: {
     width: 64,
     height: 64,
@@ -1285,8 +1367,8 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 6,
   },
-  srvEmoji: {fontSize: 28},
-  srvLabel: {fontSize: 12, fontWeight: '600', color: C.text, textAlign: 'center'},
+  srvEmoji: { fontSize: 28 },
+  srvLabel: { fontSize: 12, fontWeight: '600', color: C.text, textAlign: 'center' },
   applianceEmojiBox: {
     width: 64,
     height: 64,
@@ -1298,11 +1380,11 @@ const s = StyleSheet.create({
   },
 
   // Professionals card
-  proCard: {flexDirection: 'row', alignItems: 'center', backgroundColor: C.purpleL},
-  proCardContent: {flex: 1},
-  proTitle: {fontSize: 16, fontWeight: '800', color: C.purple, marginBottom: 6},
-  proDesc: {fontSize: 13, color: '#555', lineHeight: 18, marginBottom: 10},
-  proBadgeRow: {flexDirection: 'row'},
+  proCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.purpleL },
+  proCardContent: { flex: 1 },
+  proTitle: { fontSize: 16, fontWeight: '800', color: C.purple, marginBottom: 6 },
+  proDesc: { fontSize: 13, color: '#555', lineHeight: 18, marginBottom: 10 },
+  proBadgeRow: { flexDirection: 'row' },
   proBadge: {
     backgroundColor: '#fff',
     borderRadius: 8,
@@ -1312,14 +1394,14 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: C.purple,
   },
-  proBadgeText: {fontSize: 11, fontWeight: '700', color: C.purple},
-  proImg: {width: 88, height: 88, resizeMode: 'contain', marginLeft: 12},
+  proBadgeText: { fontSize: 11, fontWeight: '700', color: C.purple },
+  proImg: { width: 88, height: 88, resizeMode: 'contain', marginLeft: 12 },
 
-  bottomSpacer: {height: 88},
+  bottomSpacer: { height: 88 },
 
   // ── Search mode styles ───────────────────────────────────────────────────
-  searchScroll: {flex: 1},
-  searchScrollContent: {paddingBottom: 60},
+  searchScroll: { flex: 1 },
+  searchScrollContent: { paddingBottom: 60 },
 
   voiceBanner: {
     flexDirection: 'row',
@@ -1333,7 +1415,7 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#d4bbff',
   },
-  voiceBannerIcon: {fontSize: 26, marginRight: 12},
+  voiceBannerIcon: { fontSize: 26, marginRight: 12 },
   voiceBannerTitle: {
     fontSize: 14,
     fontWeight: '700',
@@ -1374,8 +1456,8 @@ const s = StyleSheet.create({
   chipPopular: {
     backgroundColor: '#fff3e0',
   },
-  chipEmoji: {fontSize: 13, marginRight: 5},
-  chipText: {fontSize: 13, fontWeight: '600', color: C.purple},
+  chipEmoji: { fontSize: 13, marginRight: 5 },
+  chipText: { fontSize: 13, fontWeight: '600', color: C.purple },
 
   catRow: {
     flexDirection: 'row',
@@ -1395,13 +1477,13 @@ const s = StyleSheet.create({
         shadowColor: '#000',
         shadowOpacity: 0.05,
         shadowRadius: 6,
-        shadowOffset: {width: 0, height: 2},
+        shadowOffset: { width: 0, height: 2 },
       },
-      android: {elevation: 2},
+      android: { elevation: 2 },
     }),
   },
-  catEmoji: {fontSize: 26, marginBottom: 6},
-  catLabel: {fontSize: 12, fontWeight: '700', color: C.text, textAlign: 'center'},
+  catEmoji: { fontSize: 26, marginBottom: 6 },
+  catLabel: { fontSize: 12, fontWeight: '700', color: C.text, textAlign: 'center' },
 
   resultsHeader: {
     fontSize: 13,
@@ -1424,9 +1506,9 @@ const s = StyleSheet.create({
         shadowColor: '#000',
         shadowOpacity: 0.06,
         shadowRadius: 8,
-        shadowOffset: {width: 0, height: 2},
+        shadowOffset: { width: 0, height: 2 },
       },
-      android: {elevation: 2},
+      android: { elevation: 2 },
     }),
   },
   resultEmojiBox: {
@@ -1436,20 +1518,20 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  resultEmoji: {fontSize: 28},
-  resultInfo: {flex: 1, marginLeft: 12},
-  resultLabel: {fontSize: 15, fontWeight: '800', color: C.text},
-  resultDesc: {fontSize: 12, color: C.sub, marginTop: 2},
-  resultRating: {fontSize: 11, color: C.sub, marginTop: 4},
-  resultRight: {alignItems: 'flex-end', marginLeft: 8},
-  resultPrice: {fontSize: 14, fontWeight: '800', color: C.purple, marginBottom: 6},
+  resultEmoji: { fontSize: 28 },
+  resultInfo: { flex: 1, marginLeft: 12 },
+  resultLabel: { fontSize: 15, fontWeight: '800', color: C.text },
+  resultDesc: { fontSize: 12, color: C.sub, marginTop: 2 },
+  resultRating: { fontSize: 11, color: C.sub, marginTop: 4 },
+  resultRight: { alignItems: 'flex-end', marginLeft: 8 },
+  resultPrice: { fontSize: 14, fontWeight: '800', color: C.purple, marginBottom: 6 },
   resultBookBtn: {
     backgroundColor: C.purple,
     borderRadius: 8,
     paddingHorizontal: 14,
     paddingVertical: 6,
   },
-  resultBookText: {fontSize: 12, fontWeight: '700', color: '#fff'},
+  resultBookText: { fontSize: 12, fontWeight: '700', color: '#fff' },
 
   seeAllBtn: {
     marginHorizontal: 16,
@@ -1461,14 +1543,14 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: C.purple,
   },
-  seeAllText: {fontSize: 14, fontWeight: '700', color: C.purple},
+  seeAllText: { fontSize: 14, fontWeight: '700', color: C.purple },
 
   noResults: {
     alignItems: 'center',
     paddingTop: 60,
     paddingHorizontal: 32,
   },
-  noResultsEmoji: {fontSize: 48, marginBottom: 12},
+  noResultsEmoji: { fontSize: 48, marginBottom: 12 },
   noResultsTitle: {
     fontSize: 16,
     fontWeight: '700',
@@ -1489,7 +1571,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 12,
   },
-  browsAllText: {color: '#fff', fontWeight: '700', fontSize: 14},
+  browsAllText: { color: '#fff', fontWeight: '700', fontSize: 14 },
 
   // Live availability card
   liveCard: {
@@ -1504,9 +1586,9 @@ const s = StyleSheet.create({
         shadowColor: '#000',
         shadowOpacity: 0.06,
         shadowRadius: 10,
-        shadowOffset: {width: 0, height: 3},
+        shadowOffset: { width: 0, height: 3 },
       },
-      android: {elevation: 3},
+      android: { elevation: 3 },
     }),
   },
   liveHeader: {
@@ -1534,8 +1616,8 @@ const s = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 20,
   },
-  liveResponseTxt: {fontSize: 11, fontWeight: '800', color: '#f97316'},
-  liveScroll: {paddingHorizontal: 16, gap: 10},
+  liveResponseTxt: { fontSize: 11, fontWeight: '800', color: '#f97316' },
+  liveScroll: { paddingHorizontal: 16, gap: 10 },
   liveChip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1545,9 +1627,9 @@ const s = StyleSheet.create({
     borderRadius: 14,
     minWidth: 110,
   },
-  liveChipEmoji: {fontSize: 20},
-  liveChipCount: {fontSize: 18, fontWeight: '900', lineHeight: 20},
-  liveChipLabel: {fontSize: 11, fontWeight: '600', lineHeight: 14},
+  liveChipEmoji: { fontSize: 20 },
+  liveChipCount: { fontSize: 18, fontWeight: '900', lineHeight: 20 },
+  liveChipLabel: { fontSize: 11, fontWeight: '600', lineHeight: 14 },
   urgentChip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1560,11 +1642,78 @@ const s = StyleSheet.create({
     borderColor: '#EF4444',
     minWidth: 100,
   },
-  urgentEmoji: {fontSize: 20},
+  urgentEmoji: { fontSize: 20 },
   urgentLabel: {
     fontSize: 11,
     fontWeight: '800',
     color: '#EF4444',
     lineHeight: 15,
   },
+
+  // Daily Home Services grid
+  dailyGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginTop: 8,
+  },
+  dailyTile: {
+    width: (width - 64) / 3,
+    backgroundColor: '#fafafa',
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: C.border,
+  },
+  dailyEmoji: { fontSize: 26, marginBottom: 6 },
+  dailyTitle: { fontSize: 12, fontWeight: '700', color: C.text, textAlign: 'center' },
+  dailyTitleHi: { fontSize: 10, color: C.sub, textAlign: 'center', marginTop: 1 },
+  dailyPrice: { fontSize: 12, fontWeight: '800', color: C.purple, marginTop: 4 },
+  // Women campaign section
+  campaignSection: {
+    marginHorizontal: 16,
+    marginBottom: 14,
+  },
+  campaignTitle: {fontSize: 18, fontWeight: '800', color: '#6E39F7'},
+  newBadge: {
+    backgroundColor: '#EF4444',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  newBadgeTxt: {fontSize: 11, fontWeight: '900', color: '#fff'},
+
+  // Subscribe cards
+  savePill: {
+    backgroundColor: '#e8fbf0',
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 20,
+  },
+  savePillTxt: {fontSize: 11, fontWeight: '800', color: '#21865b'},
+  subCard: {
+    width: 130,
+    marginRight: 12,
+    backgroundColor: '#fafafa',
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: C.border,
+    alignItems: 'center',
+  },
+  subEmoji: {fontSize: 28, marginBottom: 6},
+  subName: {fontSize: 12, fontWeight: '700', color: C.text, textAlign: 'center', marginBottom: 2},
+  subFreq: {fontSize: 11, color: C.sub, marginBottom: 6},
+  subDiscountBadge: {
+    backgroundColor: '#e8fbf0',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    marginBottom: 4,
+  },
+  subDiscountTxt: {fontSize: 11, fontWeight: '800', color: '#21865b'},
+  subPrice: {fontSize: 12, fontWeight: '800', color: '#4d2b98'},
+
 });

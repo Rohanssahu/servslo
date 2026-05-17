@@ -30,6 +30,8 @@ enum ScreenNameEnum {
   ArrivalChargesScreen = 'ArrivalChargesScreen',
   PoliciesScreen = 'PoliciesScreen',
   NearbyProvidersScreen = 'NearbyProvidersScreen',
+  ApplyCouponScreen = 'ApplyCouponScreen',
+  RecurringBookingScreen = 'RecurringBookingScreen',
 }
 
 export default ScreenNameEnum;
