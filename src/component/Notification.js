@@ -52,9 +52,18 @@ export async function requestUserPermission() {
   }
 }
 
-// Get FCM token and store it (optional)
+// Get FCM token — logged to Metro console for testing push notifications
 const getFcmToken = async () => {
-
+  try {
+    const token = await messaging().getToken();
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🔑 FCM TOKEN (copy for Firebase Console):');
+    console.log(token);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    await AsyncStorage.setItem('@servslo/fcmToken', token);
+  } catch (e) {
+    console.warn('FCM token fetch failed:', e?.message);
+  }
 };
 
 // Configure notification listeners
