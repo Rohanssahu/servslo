@@ -32,23 +32,23 @@ const C = {
 const ARRIVAL_CHARGE = 49;
 
 const DAYS = [
-  {label: 'आज', sublabel: 'Today'},
-  {label: 'कल', sublabel: 'Tomorrow'},
-  {label: 'परसों', sublabel: 'Day After'},
+  {label: '📅 आज', sublabel: 'Today'},
+  {label: '📅 कल', sublabel: 'Tomorrow'},
+  {label: '📅 परसों', sublabel: 'Day After'},
 ];
 
 const TIME_SLOTS = [
-  {time: '09:00 AM', available: true},
-  {time: '11:00 AM', available: true},
-  {time: '01:00 PM', available: false},
-  {time: '03:00 PM', available: true},
-  {time: '05:00 PM', available: true},
+  {time: '9 बजे', available: true},
+  {time: '11 बजे', available: true},
+  {time: '1 बजे', available: false},
+  {time: '3 बजे', available: true},
+  {time: '5 बजे', available: true},
 ];
 
-const DURATIONS = [
-  {label: '⚡', title: '10 मिनट', desc: 'Quick Fix', minutes: 10},
-  {label: '🔧', title: '30 मिनट', desc: 'Standard', minutes: 30},
-  {label: '🛠️', title: '60 मिनट', desc: 'Full Service', minutes: 60},
+const URGENCY_OPTIONS = [
+  {key: '10min', emoji: '🔥', title: 'अभी चाहिए', sub: '~10 मिनट में'},
+  {key: '30min', emoji: '🙂', title: 'थोड़ी देर में', sub: '~30 मिनट में'},
+  {key: '1hr',   emoji: '😊', title: 'आराम से', sub: '~1 घंटे में'},
 ];
 
 const ADDRESSES = [
@@ -93,18 +93,18 @@ export default function ServiceBookingScreen({navigation, route}: Props) {
     `इसमें ₹${service.basePrice} service charge और ₹${ARRIVAL_CHARGE} arrival charge लगेगा, कुल ₹${total}। ` +
     `Arrival charge तभी कटेगा जब professional आपके घर पहुँचे। ` +
     `अगर उससे पहले cancel किया तो कोई charge नहीं। ` +
-    `तारीख, समय और अवधि चुनकर Book Service दबाएं।`;
+    `तारीख, समय और provider कब तक चाहिए वो चुनकर Book Service दबाएं।`;
 
   const scriptEn =
     `You have selected ${service.label}. ` +
     `The service charge is rupees ${service.basePrice} plus a rupees ${ARRIVAL_CHARGE} arrival charge, totalling rupees ${total}. ` +
     `The arrival charge is only applied when the professional reaches your home. ` +
     `No cancellation charge before arrival. ` +
-    `Select your date, time and duration, then tap Book Service.`;
+    `Select your date, time and how soon you need the provider, then tap Book Service.`;
 
   const [selectedDay, setSelectedDay] = useState(0);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
-  const [selectedDuration, setSelectedDuration] = useState<number>(30);
+  const [selectedUrgency, setSelectedUrgency] = useState<string>('30min');
   const [selectedAddr, setSelectedAddr] = useState('1');
 
   const handleBook = () => {
@@ -112,13 +112,13 @@ export default function ServiceBookingScreen({navigation, route}: Props) {
       Alert.alert('समय चुनें', 'कृपया सेवा का समय चुनें');
       return;
     }
+    const urgencyLabel = URGENCY_OPTIONS.find(u => u.key === selectedUrgency)?.title ?? '';
     navigation.navigate(ScreenNameEnum.PaymentScreen, {
       amount: total,
       serviceCharge: service.basePrice,
       arrivalCharge: ARRIVAL_CHARGE,
       serviceName: service.label,
-      scheduledTime: `${DAYS[selectedDay].sublabel}, ${selectedTime}`,
-      duration: selectedDuration,
+      scheduledTime: `${DAYS[selectedDay].sublabel}, ${selectedTime} · ${urgencyLabel}`,
       bookingId: `BK${Date.now()}`,
       preSelectedProvider,
     });
@@ -194,66 +194,65 @@ export default function ServiceBookingScreen({navigation, route}: Props) {
           </View>
         </View>
 
-        {/* Date Selection */}
-        <View style={s.section}>
-          <Text style={s.sectionTitle}>📅 तारीख चुनें</Text>
+        {/* Schedule Card */}
+        <View style={s.scheduleCard}>
+          <Text style={s.scheduleCardTitle}>🗓️ बुकिंग कब करनी है?</Text>
+
+          {/* Date */}
+          <Text style={s.rowLabel}>तारीख चुनें</Text>
           <View style={s.dayRow}>
             {DAYS.map((d, i) => (
               <TouchableOpacity
                 key={i}
-                style={[s.dayChip, selectedDay === i && s.dayChipActive]}
+                style={[s.dayBtn, selectedDay === i && s.dayBtnActive]}
                 onPress={() => setSelectedDay(i)}
                 activeOpacity={0.8}>
-                <Text style={[s.dayLabel, selectedDay === i && s.dayLabelActive]}>{d.label}</Text>
-                <Text style={[s.daySub, selectedDay === i && s.daySubActive]}>{d.sublabel}</Text>
+                <Text style={[s.dayBtnText, selectedDay === i && s.dayBtnTextActive]}>
+                  {d.label}
+                </Text>
               </TouchableOpacity>
             ))}
           </View>
-        </View>
 
-        {/* Time Slots */}
-        <View style={s.section}>
-          <Text style={s.sectionTitle}>⏰ समय चुनें</Text>
-          <View style={s.timeGrid}>
+          {/* Time */}
+          <Text style={s.rowLabel}>समय चुनें</Text>
+          <View style={s.timeRow}>
             {TIME_SLOTS.map((slot, i) => (
               <TouchableOpacity
                 key={i}
                 style={[
-                  s.timeChip,
-                  !slot.available && s.timeChipDisabled,
-                  selectedTime === slot.time && s.timeChipActive,
+                  s.timeBtn,
+                  !slot.available && s.timeBtnBooked,
+                  selectedTime === slot.time && s.timeBtnActive,
                 ]}
                 onPress={() => slot.available && setSelectedTime(slot.time)}
                 activeOpacity={slot.available ? 0.8 : 1}>
-                <Text
-                  style={[
-                    s.timeText,
-                    !slot.available && s.timeTextDisabled,
-                    selectedTime === slot.time && s.timeTextActive,
-                  ]}>
+                <Text style={[
+                  s.timeBtnText,
+                  !slot.available && s.timeBtnTextBooked,
+                  selectedTime === slot.time && s.timeBtnTextActive,
+                ]}>
                   {slot.time}
                 </Text>
-                {!slot.available && <Text style={s.bookedTag}>Booked</Text>}
+                {!slot.available && <Text style={s.bookedTag}>भरा हुआ</Text>}
               </TouchableOpacity>
             ))}
           </View>
-        </View>
 
-        {/* Duration Selection */}
-        <View style={s.section}>
-          <Text style={s.sectionTitle}>⏱️ अवधि चुनें</Text>
-          <View style={s.durationRow}>
-            {DURATIONS.map(d => (
+          {/* Urgency */}
+          <Text style={s.rowLabel}>कितनी जल्दी चाहिए?</Text>
+          <View style={s.urgencyRow}>
+            {URGENCY_OPTIONS.map(u => (
               <TouchableOpacity
-                key={d.minutes}
-                style={[s.durationChip, selectedDuration === d.minutes && s.durationChipActive]}
-                onPress={() => setSelectedDuration(d.minutes)}
+                key={u.key}
+                style={[s.urgencyBtn, selectedUrgency === u.key && s.urgencyBtnActive]}
+                onPress={() => setSelectedUrgency(u.key)}
                 activeOpacity={0.8}>
-                <Text style={s.durationEmoji}>{d.label}</Text>
-                <Text style={[s.durationTitle, selectedDuration === d.minutes && s.durationTitleActive]}>
-                  {d.title}
+                <Text style={s.urgencyEmoji}>{u.emoji}</Text>
+                <Text style={[s.urgencyTitle, selectedUrgency === u.key && s.urgencyTitleActive]}>
+                  {u.title}
                 </Text>
-                <Text style={s.durationDesc}>{d.desc}</Text>
+                <Text style={s.urgencySub}>{u.sub}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -416,59 +415,78 @@ const s = StyleSheet.create({
   section: {marginBottom: 16},
   sectionTitle: {fontSize: 15, fontWeight: '800', color: C.text, marginBottom: 10},
 
-  dayRow: {flexDirection: 'row', gap: 10},
-  dayChip: {
+  scheduleCard: {
+    backgroundColor: C.card,
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 16,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: {width: 0, height: 2},
+  },
+  scheduleCardTitle: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: C.text,
+    marginBottom: 16,
+  },
+  rowLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: C.sub,
+    marginBottom: 8,
+    marginTop: 4,
+  },
+
+  dayRow: {flexDirection: 'row', gap: 8, marginBottom: 14},
+  dayBtn: {
     flex: 1,
     paddingVertical: 12,
     borderRadius: 12,
-    backgroundColor: C.card,
+    backgroundColor: C.bg,
     alignItems: 'center',
     borderWidth: 2,
     borderColor: 'transparent',
-    elevation: 1,
   },
-  dayChipActive: {borderColor: C.purple, backgroundColor: C.purpleL},
-  dayLabel: {fontSize: 16, fontWeight: '800', color: C.text},
-  dayLabelActive: {color: C.purple},
-  daySub: {fontSize: 11, color: C.sub, marginTop: 2},
-  daySubActive: {color: C.purple},
+  dayBtnActive: {backgroundColor: C.purpleL, borderColor: C.purple},
+  dayBtnText: {fontSize: 15, fontWeight: '800', color: C.text},
+  dayBtnTextActive: {color: C.purple},
 
-  timeGrid: {flexDirection: 'row', flexWrap: 'wrap', gap: 10},
-  timeChip: {
+  timeRow: {flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14},
+  timeBtn: {
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingVertical: 9,
     borderRadius: 10,
-    backgroundColor: C.card,
+    backgroundColor: C.bg,
+    alignItems: 'center',
     borderWidth: 2,
     borderColor: 'transparent',
-    alignItems: 'center',
-    elevation: 1,
-    minWidth: 95,
   },
-  timeChipActive: {borderColor: C.purple, backgroundColor: C.purpleL},
-  timeChipDisabled: {backgroundColor: '#f0f0f0'},
-  timeText: {fontSize: 13, fontWeight: '700', color: C.text},
-  timeTextActive: {color: C.purple},
-  timeTextDisabled: {color: '#bbb'},
-  bookedTag: {fontSize: 9, color: '#bbb', marginTop: 2},
+  timeBtnActive: {backgroundColor: C.purpleL, borderColor: C.purple},
+  timeBtnBooked: {backgroundColor: '#f0f0f0'},
+  timeBtnText: {fontSize: 13, fontWeight: '700', color: C.text},
+  timeBtnTextActive: {color: C.purple},
+  timeBtnTextBooked: {color: '#bbb'},
+  bookedTag: {fontSize: 9, color: '#bbb', marginTop: 1},
 
-  durationRow: {flexDirection: 'row', gap: 10},
-  durationChip: {
+  urgencyRow: {flexDirection: 'row', gap: 8},
+  urgencyBtn: {
     flex: 1,
-    paddingVertical: 14,
+    paddingVertical: 12,
     borderRadius: 14,
-    backgroundColor: C.card,
+    backgroundColor: C.bg,
     alignItems: 'center',
     borderWidth: 2,
     borderColor: 'transparent',
-    elevation: 1,
-    gap: 3,
+    gap: 2,
   },
-  durationChipActive: {borderColor: C.purple, backgroundColor: C.purpleL},
-  durationEmoji: {fontSize: 22},
-  durationTitle: {fontSize: 13, fontWeight: '800', color: C.text},
-  durationTitleActive: {color: C.purple},
-  durationDesc: {fontSize: 10, color: C.sub},
+  urgencyBtnActive: {backgroundColor: C.purpleL, borderColor: C.purple},
+  urgencyEmoji: {fontSize: 22, marginBottom: 2},
+  urgencyTitle: {fontSize: 12, fontWeight: '800', color: C.text, textAlign: 'center'},
+  urgencyTitleActive: {color: C.purple},
+  urgencySub: {fontSize: 10, color: C.sub, textAlign: 'center'},
 
   addrCard: {
     backgroundColor: C.card,

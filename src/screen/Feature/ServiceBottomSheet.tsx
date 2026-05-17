@@ -354,8 +354,16 @@ const ServiceBottomSheet = forwardRef<ServiceBottomSheetRef, Props>(
             <TouchableOpacity
               style={s.bookBtn}
               onPress={() => {
+                const servicePrice = parseInt(svc.price.replace('₹', ''), 10);
+                const arrivalCharge = 49;
                 sheetRef.current?.close();
-                navigation.navigate(ScreenNameEnum.ReviewBookingScreen);
+                navigation.navigate(ScreenNameEnum.PaymentScreen, {
+                  amount: servicePrice + arrivalCharge,
+                  serviceCharge: servicePrice,
+                  arrivalCharge,
+                  serviceName: svc.title,
+                  bookingId: `BK${Date.now()}`,
+                });
               }}
               activeOpacity={0.9}>
               <LinearGradient
