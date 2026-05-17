@@ -24,7 +24,7 @@ const OTP_LENGTH = 6;
 const BOX_SIZE = Math.floor((width * 0.92 - 48 - 40) / OTP_LENGTH);
 
 const OTPVerification: React.FC<{navigation: any}> = ({navigation}) => {
-  const {language, setLanguage} = useLanguage();
+  const {lang: language} = useLanguage();
   const strings = languageStrings[language];
   const [otpDigits, setOtpDigits] = useState<string[]>(
     Array(OTP_LENGTH).fill(''),
