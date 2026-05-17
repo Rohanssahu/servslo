@@ -9,377 +9,432 @@ import {
   StatusBar,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
 } from 'react-native';
 import Tts from 'react-native-tts';
-import LinearGradient from 'react-native-linear-gradient';
-import Icon from '../../component/Icon';
-import {icon} from '../../component/Image';
-import {color} from '../../constant';
-
-import ScreenNameEnum from '../../routes/screenName.enum';
-import { useLanguage } from '../../language/LanguageContext';
+import Icon2 from 'react-native-vector-icons/MaterialCommunityIcons';
+import {useLanguage} from '../../language/LanguageContext';
 import languageStrings from '../../language/languageStrings';
+import ScreenNameEnum from '../../routes/screenName.enum';
+import LinearGradient from 'react-native-linear-gradient';
 
-const {width} = Dimensions.get('window');
+const COLORS = {
+  primaryDark: '#1E0B5E',
+  primary: '#4D2B98',
+  primaryLight: '#7B4AD5',
+  accent: '#FFC107',
+  white: '#FFFFFF',
+  bg: '#F7F5FF',
+  text: '#1A1535',
+  subtext: '#6B618E',
+  border: '#DDD6F5',
+  borderFocus: '#7B4AD5',
+  success: '#16A34A',
+  error: '#DC2626',
+};
 
-const SERVICE_ICONS = ['⚡', '🔧', '🚿', '🧹', '❄️'];
+const StepIndicator = ({current, total}: {current: number; total: number}) => (
+  <View style={stepStyles.container}>
+    {Array.from({length: total}).map((_, i) => (
+      <React.Fragment key={i}>
+        <View
+          style={[
+            stepStyles.circle,
+            i < current && stepStyles.circleActive,
+            i === current && stepStyles.circleCurrent,
+          ]}>
+          {i < current ? (
+            <Icon2 name="check" size={11} color={COLORS.white} />
+          ) : (
+            <Text
+              style={[
+                stepStyles.circleText,
+                i === current && stepStyles.circleTextActive,
+              ]}>
+              {i + 1}
+            </Text>
+          )}
+        </View>
+        {i < total - 1 && (
+          <View style={[stepStyles.line, i < current && stepStyles.lineActive]} />
+        )}
+      </React.Fragment>
+    ))}
+  </View>
+);
+
+const stepStyles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 28,
+  },
+  circle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  circleActive: {
+    backgroundColor: COLORS.accent,
+    borderColor: COLORS.accent,
+  },
+  circleCurrent: {
+    backgroundColor: COLORS.white,
+    borderColor: COLORS.white,
+  },
+  circleText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.6)',
+  },
+  circleTextActive: {
+    color: COLORS.primary,
+  },
+  line: {
+    flex: 1,
+    height: 2,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    marginHorizontal: 4,
+    maxWidth: 40,
+  },
+  lineActive: {
+    backgroundColor: COLORS.accent,
+  },
+});
 
 const PhoneLogin: React.FC<{navigation: any}> = ({navigation}) => {
- const {lang, toggleLang} = useLanguage();
-
-const language = lang;
-  console.log('language',language);
-  
+  const {lang, toggleLang} = useLanguage();
   const [phone, setPhone] = useState('');
   const [isFocused, setIsFocused] = useState(false);
-  const strings = languageStrings[language];
-  const isValid = phone.length === 10;
+  const [error, setError] = useState('');
+
+  const strings = languageStrings[lang];
 
   const speakInstruction = () => {
-    Tts.setDefaultLanguage(language === 'hi' ? 'hi-IN' : 'en-US');
+    Tts.setDefaultLanguage(lang === 'hi' ? 'hi-IN' : 'en-US');
     Tts.speak(strings.tts);
   };
 
+  const validateAndContinue = () => {
+    if (phone.length !== 10) {
+      setError(
+        lang === 'hi'
+          ? 'कृपया 10 अंकों का सही मोबाइल नंबर दर्ज करें'
+          : 'Please enter a valid 10-digit mobile number',
+      );
+      return;
+    }
+    setError('');
+    navigation.navigate(ScreenNameEnum.OTPVerification, {phone});
+  };
+
   return (
-    <LinearGradient
-      colors={['#6E39F7', '#8E57FF', '#B78CFF']}
-      start={{x: 0.1, y: 0}}
-      end={{x: 1, y: 1}}
-      style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <StatusBar backgroundColor={COLORS.primaryDark} barStyle="light-content" />
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}>
 
-      <TouchableOpacity
-        style={styles.languageToggle}
-        onPress={() => {toggleLang()}}>
-        <Text style={styles.langText}>{strings?.switchLang}</Text>
-      </TouchableOpacity>
+        <LinearGradient
+          colors={[COLORS.primaryDark, COLORS.primary, COLORS.primaryLight]}
+          style={styles.topSection}
+          start={{x: 0.1, y: 0}}
+          end={{x: 0.9, y: 1}}>
+          <View style={styles.circleDecor} />
 
-      <TouchableOpacity style={styles.speakerIcon} onPress={speakInstruction}>
-        <Icon source={icon.speaker} size={24} style={{tintColor: color.purple}} />
-      </TouchableOpacity>
+          <View style={styles.headerRow}>
+            <TouchableOpacity style={styles.langToggleBtn} onPress={toggleLang}>
+              <Icon2 name="translate" size={16} color={COLORS.primary} />
+              <Text style={styles.langToggleText}>{strings.switchLang}</Text>
+            </TouchableOpacity>
 
-      {/* Brand area */}
-      <View style={styles.brandArea}>
-        <View style={styles.logoCircle}>
-          <Icon source={icon.touch} size={44} style={{tintColor: '#fff'}} />
-        </View>
-        <Text style={styles.appName}>ServsLo</Text>
-        <Text style={styles.tagline}>
-          {language === 'hi'
-            ? 'घर बैठे सेवाएं बुक करें'
-            : 'Book Home Services Near You'}
-        </Text>
-        <View style={styles.serviceChips}>
-          {SERVICE_ICONS.map((emoji, i) => (
-            <View key={i} style={styles.chip}>
-              <Text style={styles.chipEmoji}>{emoji}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
+            <TouchableOpacity style={styles.speakerBtn} onPress={speakInstruction}>
+              <Icon2 name="volume-high" size={20} color={COLORS.primary} />
+            </TouchableOpacity>
+          </View>
 
-      {/* Bottom card */}
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <StepIndicator current={0} total={3} />
+
+          <Text style={styles.topTitle}>{strings.welcomeTitle}</Text>
+          <Text style={styles.topSubtitle}>{strings.loginSubtitle}</Text>
+        </LinearGradient>
+
         <View style={styles.card}>
-          <Text style={styles.title}>{strings?.phoneLogin}</Text>
-          <Text style={styles.subtitle}>
-            {language === 'hi'
-              ? 'जारी रखने के लिए अपना मोबाइल नंबर दर्ज करें'
-              : 'Enter your mobile number to continue'}
-          </Text>
+          <Text style={styles.inputLabel}>{strings.enterPhone}</Text>
 
           <View
             style={[
-              styles.phoneInputWrapper,
-              isFocused && styles.inputFocused,
-              isValid && styles.inputValid,
+              styles.phoneWrapper,
+              isFocused && styles.phoneWrapperFocused,
+              !!error && styles.phoneWrapperError,
             ]}>
-            <View style={styles.countryCodeBox}>
-              <Text style={styles.flagText}>🇮🇳</Text>
+            <View style={styles.countryCode}>
+              <Text style={styles.flagEmoji}>🇮🇳</Text>
               <Text style={styles.countryCodeText}>+91</Text>
+              <View style={styles.codeDivider} />
             </View>
-            <View style={styles.dividerLine} />
+
             <TextInput
               style={styles.phoneInput}
               keyboardType="phone-pad"
-              placeholder="00000 00000"
-              placeholderTextColor="#bbb"
+              placeholder={strings.placeholder}
+              placeholderTextColor="#B0A8CC"
               value={phone}
-              onChangeText={text =>
-                setPhone(text.replace(/[^0-9]/g, '').slice(0, 10))
-              }
-              maxLength={10}
+              onChangeText={text => {
+                setPhone(text.replace(/[^0-9]/g, '').slice(0, 10));
+                if (error) setError('');
+              }}
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
+              maxLength={10}
+              returnKeyType="done"
             />
-            {isValid && <Text style={styles.checkmark}>✓</Text>}
+
+            {phone.length === 10 && (
+              <Icon2 name="check-circle" size={22} color={COLORS.success} style={styles.validIcon} />
+            )}
           </View>
 
-          {phone.length > 0 && phone.length < 10 && (
-            <Text style={styles.hintText}>
-              {language === 'hi'
-                ? `${10 - phone.length} अंक और चाहिए`
-                : `${10 - phone.length} more digits needed`}
-            </Text>
-          )}
+          {error ? (
+            <View style={styles.errorRow}>
+              <Icon2 name="alert-circle-outline" size={14} color={COLORS.error} />
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          ) : null}
+
+          <View style={styles.secureRow}>
+            <Icon2 name="shield-check" size={15} color={COLORS.success} />
+            <Text style={styles.secureText}>{strings.secureNote}</Text>
+          </View>
 
           <TouchableOpacity
-            onPress={() =>
-              isValid && navigation.navigate(ScreenNameEnum.OTPVerification)
-            }
-            style={[styles.button, !isValid && styles.buttonDisabled]}
-            activeOpacity={isValid ? 0.8 : 1}>
+            style={[styles.ctaBtn, phone.length !== 10 && styles.ctaBtnDisabled]}
+            onPress={validateAndContinue}
+            activeOpacity={0.85}>
             <LinearGradient
-              colors={isValid ? ['#6E39F7', '#4d2b98'] : ['#ccc', '#bbb']}
+              colors={
+                phone.length === 10
+                  ? [COLORS.primary, COLORS.primaryLight]
+                  : ['#C4BAE0', '#C4BAE0']
+              }
+              style={styles.ctaBtnGradient}
               start={{x: 0, y: 0}}
-              end={{x: 1, y: 0}}
-              style={styles.buttonGradient}>
-              <Text style={styles.buttonText}>{strings.continue}</Text>
-              <Text style={styles.buttonArrow}>→</Text>
+              end={{x: 1, y: 0}}>
+              <Text style={styles.ctaBtnText}>{strings.continue}</Text>
+              <Icon2 name="arrow-right" size={20} color={COLORS.white} style={styles.ctaArrow} />
             </LinearGradient>
           </TouchableOpacity>
 
-          <View style={styles.orRow}>
-            <View style={styles.orLine} />
-            <Text style={styles.orText}>{language === 'hi' ? 'या' : 'OR'}</Text>
-            <View style={styles.orLine} />
-          </View>
-
-          <TouchableOpacity
-            onPress={() => navigation.navigate(ScreenNameEnum.TabNavigator)}
-            style={styles.skipBtn}>
-            <Text style={styles.skipText}>
-              {language === 'hi' ? 'अभी नहीं, बाद में' : 'Skip for now'}
-            </Text>
-          </TouchableOpacity>
-
-          <Text style={styles.termsText}>
-            {language === 'hi'
-              ? 'जारी रखकर आप हमारी गोपनीयता नीति से सहमत हैं'
-              : 'By continuing, you agree to our Terms & Privacy Policy'}
+          <Text style={styles.stepLabel}>
+            {strings.step} 1 {strings.of} 3 — {strings.stepPhone}
           </Text>
         </View>
-      </KeyboardAvoidingView>
-    </LinearGradient>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 
 export default PhoneLogin;
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    paddingBottom: 30,
-  },
-  languageToggle: {
-    position: 'absolute',
-    top: 55,
-    left: 20,
-    zIndex: 10,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  langText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 13,
-  },
-  speakerIcon: {
-    position: 'absolute',
-    top: 47,
-    right: 20,
-    zIndex: 10,
-    backgroundColor: '#fff',
-    padding: 10,
-    borderRadius: 30,
-  },
-  brandArea: {
-    alignItems: 'center',
-    marginBottom: 32,
-    marginTop: 100,
-  },
-  logoCircle: {
-    width: 84,
-    height: 84,
-    borderRadius: 42,
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 14,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.4)',
-  },
-  appName: {
-    fontSize: 34,
-    fontWeight: '800',
-    color: '#fff',
-    letterSpacing: 1,
-  },
-  tagline: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.85)',
-    marginTop: 6,
-    textAlign: 'center',
-  },
-  serviceChips: {
-    flexDirection: 'row',
-    marginTop: 18,
-  },
-  chip: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginHorizontal: 5,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  chipEmoji: {
-    fontSize: 20,
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 24,
-    paddingVertical: 28,
+  flex: {flex: 1, backgroundColor: COLORS.white},
+  scrollContent: {flexGrow: 1},
+  topSection: {
+    paddingTop: 50,
+    paddingBottom: 40,
     paddingHorizontal: 24,
-    width: width * 0.92,
-    elevation: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.18,
-    shadowRadius: 16,
-    shadowOffset: {width: 0, height: -4},
+    overflow: 'hidden',
   },
-  title: {
-    fontSize: 24,
+  circleDecor: {
+    position: 'absolute',
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    top: -50,
+    right: -60,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 28,
+  },
+  langToggleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.white,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+  },
+  langToggleText: {
+    color: COLORS.primary,
+    fontSize: 13,
     fontWeight: '700',
-    color: '#1a1a2e',
-    marginBottom: 6,
+    marginLeft: 4,
   },
-  subtitle: {
+  speakerBtn: {
+    backgroundColor: COLORS.white,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    shadowOffset: {width: 0, height: 2},
+  },
+  topTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: COLORS.white,
+    marginTop: 4,
+  },
+  topSubtitle: {
     fontSize: 14,
-    color: '#888',
-    marginBottom: 24,
+    color: 'rgba(255,255,255,0.7)',
+    marginTop: 6,
     lineHeight: 20,
   },
-  phoneInputWrapper: {
+  card: {
+    backgroundColor: COLORS.white,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    marginTop: -24,
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 36,
+    paddingBottom: 32,
+    elevation: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 20,
+    shadowOffset: {width: 0, height: -4},
+  },
+  inputLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: 10,
+  },
+  phoneWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: '#e0e0e0',
+    borderColor: COLORS.border,
     borderRadius: 14,
+    backgroundColor: COLORS.bg,
     height: 58,
-    marginBottom: 8,
     overflow: 'hidden',
-    backgroundColor: '#fafafa',
   },
-  inputFocused: {
-    borderColor: color.purple,
-    backgroundColor: '#fff',
+  phoneWrapperFocused: {
+    borderColor: COLORS.borderFocus,
+    backgroundColor: '#F5F1FF',
   },
-  inputValid: {
-    borderColor: '#22c55e',
+  phoneWrapperError: {
+    borderColor: COLORS.error,
+    backgroundColor: '#FFF5F5',
   },
-  countryCodeBox: {
+  countryCode: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
+    height: '100%',
   },
-  flagText: {
+  flagEmoji: {
     fontSize: 20,
-    marginRight: 4,
+    marginRight: 6,
   },
   countryCodeText: {
-    fontSize: 15,
-    color: '#333',
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.text,
   },
-  dividerLine: {
+  codeDivider: {
     width: 1,
-    height: 30,
-    backgroundColor: '#ddd',
+    height: 24,
+    backgroundColor: COLORS.border,
+    marginLeft: 10,
   },
   phoneInput: {
     flex: 1,
     paddingHorizontal: 14,
-    fontSize: 17,
-    color: '#000',
-    letterSpacing: 1,
+    fontSize: 18,
+    color: COLORS.text,
+    fontWeight: '600',
+    height: '100%',
   },
-  checkmark: {
-    color: '#22c55e',
-    fontSize: 20,
-    fontWeight: '700',
-    paddingRight: 14,
+  validIcon: {
+    marginRight: 14,
   },
-  hintText: {
+  errorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  errorText: {
     fontSize: 12,
-    color: '#ef4444',
-    marginBottom: 12,
-    marginLeft: 4,
+    color: COLORS.error,
+    marginLeft: 5,
+    flex: 1,
   },
-  button: {
+  secureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 14,
+    marginBottom: 32,
+  },
+  secureText: {
+    fontSize: 12,
+    color: COLORS.success,
+    marginLeft: 6,
+    fontWeight: '500',
+  },
+  ctaBtn: {
     borderRadius: 14,
     overflow: 'hidden',
-    marginTop: 16,
-    marginBottom: 20,
+    elevation: 4,
+    shadowColor: COLORS.primary,
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: {width: 0, height: 4},
   },
-  buttonDisabled: {
-    opacity: 0.55,
+  ctaBtnDisabled: {
+    elevation: 0,
+    shadowOpacity: 0,
   },
-  buttonGradient: {
+  ctaBtnGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
+    paddingVertical: 17,
+    paddingHorizontal: 24,
   },
-  buttonText: {
-    color: '#fff',
+  ctaBtnText: {
+    color: COLORS.white,
     fontSize: 17,
     fontWeight: '700',
-    letterSpacing: 0.4,
   },
-  buttonArrow: {
-    color: '#fff',
-    fontSize: 18,
-    marginLeft: 10,
+  ctaArrow: {
+    marginLeft: 8,
   },
-  orRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  orLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#eee',
-  },
-  orText: {
-    color: '#aaa',
-    fontSize: 13,
-    marginHorizontal: 12,
-    fontWeight: '500',
-  },
-  skipBtn: {
-    alignItems: 'center',
-    paddingVertical: 10,
-    marginBottom: 14,
-  },
-  skipText: {
-    color: color.purple,
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  termsText: {
-    fontSize: 11,
-    color: '#bbb',
+  stepLabel: {
     textAlign: 'center',
-    lineHeight: 16,
+    marginTop: 20,
+    fontSize: 12,
+    color: COLORS.subtext,
   },
 });

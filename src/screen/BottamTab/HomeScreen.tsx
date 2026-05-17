@@ -699,16 +699,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             ))}
           </View>
 
-          {/* Rotating Campaign Banner (auto-cycles IPL → Monsoon → First-time) */}
-          <RotatingCampaignBanner
-            lang={lang}
-            onPress={() =>
-              navigation.navigate(ScreenNameEnum.AllServicesScreen, {
-                category: 'all',
-                title: 'All Services',
-              })
-            }
-          />
+  
 
           {/* What do you need? */}
           <View style={s.card} ref={quickServicesRef} collapsable={false}>
@@ -977,7 +968,16 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               })
             }
           />
-
+        {/* Rotating Campaign Banner (auto-cycles IPL → Monsoon → First-time) */}
+          <RotatingCampaignBanner
+            lang={lang}
+            onPress={() =>
+              navigation.navigate(ScreenNameEnum.AllServicesScreen, {
+                category: 'all',
+                title: 'All Services',
+              })
+            }
+          />
        
           {/* Salon for Women */}
           <View style={s.card}>

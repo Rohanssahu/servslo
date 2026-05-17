@@ -1,354 +1,569 @@
-import React, {useState, useRef, useEffect} from 'react';
+import React, {useState, useEffect, useRef} from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   Dimensions,
   StatusBar,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
+  TextInput,
 } from 'react-native';
 import Tts from 'react-native-tts';
-import LinearGradient from 'react-native-linear-gradient';
-import Icon from '../../component/Icon';
-import {icon} from '../../component/Image';
-import {color} from '../../constant';
+import Icon2 from 'react-native-vector-icons/MaterialCommunityIcons';
 import {useLanguage} from '../../language/LanguageContext';
 import languageStrings from '../../language/languageStrings';
 import ScreenNameEnum from '../../routes/screenName.enum';
+import LinearGradient from 'react-native-linear-gradient';
 
 const {width} = Dimensions.get('window');
-const OTP_LENGTH = 6;
-const BOX_SIZE = Math.floor((width * 0.92 - 48 - 40) / OTP_LENGTH);
 
-const OTPVerification: React.FC<{navigation: any}> = ({navigation}) => {
-  const {lang: language} = useLanguage();
-  const strings = languageStrings[language];
-  const [otpDigits, setOtpDigits] = useState<string[]>(
-    Array(OTP_LENGTH).fill(''),
-  );
-  const [timer, setTimer] = useState(60);
+const COLORS = {
+  primaryDark: '#1E0B5E',
+  primary: '#4D2B98',
+  primaryLight: '#7B4AD5',
+  primaryBg: '#EDE7FF',
+  accent: '#FFC107',
+  white: '#FFFFFF',
+  bg: '#F7F5FF',
+  text: '#1A1535',
+  subtext: '#6B618E',
+  border: '#DDD6F5',
+  borderFocus: '#7B4AD5',
+  success: '#16A34A',
+  error: '#DC2626',
+};
+
+const OTP_LENGTH = 4;
+const RESEND_TIMEOUT = 60;
+
+const StepIndicator = ({current, total}: {current: number; total: number}) => (
+  <View style={stepStyles.container}>
+    {Array.from({length: total}).map((_, i) => (
+      <React.Fragment key={i}>
+        <View
+          style={[
+            stepStyles.circle,
+            i < current && stepStyles.circleActive,
+            i === current && stepStyles.circleCurrent,
+          ]}>
+          {i < current ? (
+            <Icon2 name="check" size={11} color={COLORS.white} />
+          ) : (
+            <Text
+              style={[
+                stepStyles.circleText,
+                i === current && stepStyles.circleTextActive,
+              ]}>
+              {i + 1}
+            </Text>
+          )}
+        </View>
+        {i < total - 1 && (
+          <View style={[stepStyles.line, i < current && stepStyles.lineActive]} />
+        )}
+      </React.Fragment>
+    ))}
+  </View>
+);
+
+const stepStyles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 28,
+  },
+  circle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  circleActive: {
+    backgroundColor: COLORS.accent,
+    borderColor: COLORS.accent,
+  },
+  circleCurrent: {
+    backgroundColor: COLORS.white,
+    borderColor: COLORS.white,
+  },
+  circleText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.6)',
+  },
+  circleTextActive: {
+    color: COLORS.primary,
+  },
+  line: {
+    flex: 1,
+    height: 2,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    marginHorizontal: 4,
+    maxWidth: 40,
+  },
+  lineActive: {
+    backgroundColor: COLORS.accent,
+  },
+});
+
+const OTPCell = ({
+  value,
+  isFocused,
+  hasError,
+}: {
+  value: string;
+  isFocused: boolean;
+  hasError: boolean;
+}) => (
+  <View
+    style={[
+      otpStyles.cell,
+      isFocused && otpStyles.cellFocused,
+      !!value && otpStyles.cellFilled,
+      hasError && otpStyles.cellError,
+    ]}>
+    {value ? (
+      <Text style={otpStyles.cellText}>{value}</Text>
+    ) : isFocused ? (
+      <View style={otpStyles.cursor} />
+    ) : null}
+  </View>
+);
+
+const otpStyles = StyleSheet.create({
+  cell: {
+    width: (width - 48 - 3 * 12) / 4,
+    height: 56,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.bg,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cellFocused: {
+    borderColor: COLORS.primary,
+    backgroundColor: '#F0EBFF',
+    elevation: 3,
+    shadowColor: COLORS.primary,
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    shadowOffset: {width: 0, height: 2},
+  },
+  cellFilled: {
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primaryBg,
+  },
+  cellError: {
+    borderColor: COLORS.error,
+    backgroundColor: '#FFF5F5',
+  },
+  cellText: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  cursor: {
+    width: 2,
+    height: 24,
+    backgroundColor: COLORS.primary,
+  },
+});
+
+const OTPVerification: React.FC<{navigation: any; route: any}> = ({navigation, route}) => {
+  const {lang, toggleLang} = useLanguage();
+  const strings = languageStrings[lang];
+  const phone: string = route?.params?.phone || '';
+
+  const [otp, setOtp] = useState('');
+  const [focusedIndex, setFocusedIndex] = useState(0);
+  const [resendTimer, setResendTimer] = useState(RESEND_TIMEOUT);
   const [canResend, setCanResend] = useState(false);
-  const inputRefs = useRef<(TextInput | null)[]>([]);
+  const [error, setError] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
+
+  const inputRef = useRef<TextInput>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    setTimeout(() => inputRefs.current[0]?.focus(), 300);
+    inputRef.current?.focus();
+    startTimer();
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
   }, []);
 
-  useEffect(() => {
-    if (timer === 0) {
-      setCanResend(true);
-      return;
-    }
-    const interval = setInterval(() => setTimer(t => t - 1), 1000);
-    return () => clearInterval(interval);
-  }, [timer]);
-
-  const handleChange = (text: string, index: number) => {
-    const digit = text.replace(/[^0-9]/g, '').slice(-1);
-    const newOtp = [...otpDigits];
-    newOtp[index] = digit;
-    setOtpDigits(newOtp);
-    if (digit && index < OTP_LENGTH - 1) {
-      inputRefs.current[index + 1]?.focus();
-    }
-  };
-
-  const handleKeyPress = (e: any, index: number) => {
-    if (e.nativeEvent.key === 'Backspace') {
-      if (otpDigits[index]) {
-        const newOtp = [...otpDigits];
-        newOtp[index] = '';
-        setOtpDigits(newOtp);
-      } else if (index > 0) {
-        const newOtp = [...otpDigits];
-        newOtp[index - 1] = '';
-        setOtpDigits(newOtp);
-        inputRefs.current[index - 1]?.focus();
-      }
-    }
-  };
-
-  const handleResend = () => {
-    if (!canResend) return;
-    setTimer(60);
+  const startTimer = () => {
+    setResendTimer(RESEND_TIMEOUT);
     setCanResend(false);
-    setOtpDigits(Array(OTP_LENGTH).fill(''));
-    setTimeout(() => inputRefs.current[0]?.focus(), 100);
-    Tts.speak(strings.otpResent);
+    timerRef.current = setInterval(() => {
+      setResendTimer(prev => {
+        if (prev <= 1) {
+          if (timerRef.current) clearInterval(timerRef.current);
+          setCanResend(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
   };
-
-  const isComplete = otpDigits.every(d => d !== '');
-
-  const activeIndex = otpDigits.findIndex(d => d === '');
 
   const speakInstruction = () => {
-    Tts.setDefaultLanguage(language === 'hi' ? 'hi-IN' : 'en-US');
+    Tts.setDefaultLanguage(lang === 'hi' ? 'hi-IN' : 'en-US');
     Tts.speak(strings.otpTts);
   };
 
+  const handleResendOtp = () => {
+    if (!canResend) return;
+    Tts.speak(strings.otpResent);
+    setOtp('');
+    setError('');
+    startTimer();
+    setTimeout(() => inputRef.current?.focus(), 100);
+  };
+
+  const handleOtpChange = (text: string) => {
+    const cleaned = text.replace(/[^0-9]/g, '').slice(0, OTP_LENGTH);
+    setOtp(cleaned);
+    setError('');
+    setFocusedIndex(Math.min(cleaned.length, OTP_LENGTH - 1));
+  };
+
+  const handleVerify = () => {
+    if (otp.length !== OTP_LENGTH) {
+      setError(
+        lang === 'hi'
+          ? 'कृपया 6 अंकों का OTP दर्ज करें'
+          : 'Please enter the complete 6-digit OTP',
+      );
+      return;
+    }
+    setIsVerifying(true);
+    setTimeout(() => {
+      setIsVerifying(false);
+      navigation.navigate(ScreenNameEnum.UserInfoForm, {profile: false});
+    }, 800);
+  };
+
+  const maskedPhone = phone
+    ? `${phone.slice(0, 2)}${'*'.repeat(6)}${phone.slice(-2)}`
+    : '**********';
+
   return (
-    <LinearGradient
-      colors={['#6E39F7', '#8E57FF', '#B78CFF']}
-      start={{x: 0.1, y: 0}}
-      end={{x: 1, y: 1}}
-      style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <StatusBar backgroundColor={COLORS.primaryDark} barStyle="light-content" />
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}>
 
-      <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-        <Text style={styles.backArrow}>←</Text>
-      </TouchableOpacity>
+        <LinearGradient
+          colors={[COLORS.primaryDark, COLORS.primary, COLORS.primaryLight]}
+          style={styles.topSection}
+          start={{x: 0.1, y: 0}}
+          end={{x: 0.9, y: 1}}>
+          <View style={styles.circleDecor} />
 
-      <TouchableOpacity style={styles.speakerIcon} onPress={speakInstruction}>
-        <Icon source={icon.speaker} size={24} style={{tintColor: color.purple}} />
-      </TouchableOpacity>
+          <View style={styles.headerRow}>
+            <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+              <Icon2 name="arrow-left" size={20} color={COLORS.primary} />
+            </TouchableOpacity>
 
-      {/* Top area */}
-      <View style={styles.topArea}>
-        <View style={styles.iconBg}>
-          <Text style={styles.lockEmoji}>🔐</Text>
-        </View>
-        <Text style={styles.topTitle}>{strings.otpVerify}</Text>
-        <Text style={styles.topSubtitle}>
-          {language === 'hi'
-            ? 'OTP आपके मोबाइल नंबर पर भेजा गया है'
-            : 'OTP has been sent to your mobile number'}
-        </Text>
-      </View>
+            <TouchableOpacity style={styles.langToggleBtn} onPress={toggleLang}>
+              <Icon2 name="translate" size={15} color={COLORS.primary} />
+              <Text style={styles.langToggleText}>{strings.switchLang}</Text>
+            </TouchableOpacity>
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>
-            {language === 'hi' ? 'OTP दर्ज करें' : 'Enter OTP'}
-          </Text>
-
-          {/* 6 Individual OTP Boxes */}
-          <View style={styles.otpRow}>
-            {otpDigits.map((digit, index) => (
-              <TextInput
-                key={index}
-                ref={ref => {
-                  inputRefs.current[index] = ref;
-                }}
-                style={[
-                  styles.otpBox,
-                  digit ? styles.otpBoxFilled : null,
-                  !isComplete && index === (activeIndex === -1 ? OTP_LENGTH - 1 : activeIndex)
-                    ? styles.otpBoxActive
-                    : null,
-                ]}
-                keyboardType="number-pad"
-                maxLength={1}
-                value={digit}
-                onChangeText={text => handleChange(text, index)}
-                onKeyPress={e => handleKeyPress(e, index)}
-                caretHidden
-                selectTextOnFocus
-              />
-            ))}
+            <TouchableOpacity style={styles.speakerBtn} onPress={speakInstruction}>
+              <Icon2 name="volume-high" size={20} color={COLORS.primary} />
+            </TouchableOpacity>
           </View>
 
-          {/* Timer / Resend */}
-          <View style={styles.timerRow}>
-            {!canResend ? (
-              <Text style={styles.timerText}>
-                {language === 'hi'
-                  ? `OTP फिर से भेजें (${timer}s)`
-                  : `Resend OTP in ${timer}s`}
-              </Text>
-            ) : (
-              <TouchableOpacity onPress={handleResend}>
-                <Text style={styles.resendActive}>
-                  {language === 'hi' ? '🔄 OTP फिर से भेजें' : '🔄 Resend OTP'}
-                </Text>
+          <StepIndicator current={1} total={3} />
+
+          <Text style={styles.topTitle}>{strings.otpVerify}</Text>
+          <Text style={styles.topSubtitle}>
+            {strings.otpSentTo}{' '}
+            <Text style={styles.phoneHighlight}>+91 {maskedPhone}</Text>
+          </Text>
+        </LinearGradient>
+
+        <View style={styles.card}>
+          <Text style={styles.inputLabel}>{strings.enterOtp}</Text>
+
+          {/* Hidden single TextInput drives the keyboard */}
+          <TextInput
+            ref={inputRef}
+            value={otp}
+            onChangeText={handleOtpChange}
+            keyboardType="number-pad"
+            maxLength={OTP_LENGTH}
+            style={styles.hiddenInput}
+            caretHidden
+            onFocus={() => setFocusedIndex(Math.min(otp.length, OTP_LENGTH - 1))}
+            onBlur={() => setFocusedIndex(-1)}
+          />
+
+          {/* Visual OTP cells */}
+          <TouchableOpacity
+            style={styles.otpRow}
+            onPress={() => inputRef.current?.focus()}
+            activeOpacity={1}>
+            {Array.from({length: OTP_LENGTH}).map((_, index) => (
+              <OTPCell
+                key={index}
+                value={otp[index] || ''}
+                isFocused={focusedIndex === index}
+                hasError={!!error}
+              />
+            ))}
+          </TouchableOpacity>
+
+          {error ? (
+            <View style={styles.errorRow}>
+              <Icon2 name="alert-circle-outline" size={14} color={COLORS.error} />
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          ) : null}
+
+          <View style={styles.resendRow}>
+            <Text style={styles.resendLabel}>{strings.didntReceive} </Text>
+            {canResend ? (
+              <TouchableOpacity onPress={handleResendOtp}>
+                <Text style={styles.resendLink}>{strings.resendOtp}</Text>
               </TouchableOpacity>
+            ) : (
+              <Text style={styles.resendTimer}>
+                {strings.resendIn} {resendTimer}{strings.seconds}
+              </Text>
             )}
           </View>
 
           <TouchableOpacity
-            style={[styles.button, !isComplete && styles.buttonDisabled]}
-            onPress={() =>
-              isComplete &&
-              navigation.navigate(ScreenNameEnum.UserInfoForm, {
-                profile: false,
-              })
-            }
-            activeOpacity={isComplete ? 0.8 : 1}>
+            style={[styles.ctaBtn, otp.length !== OTP_LENGTH && styles.ctaBtnDisabled]}
+            onPress={handleVerify}
+            activeOpacity={0.85}
+            disabled={isVerifying}>
             <LinearGradient
-              colors={isComplete ? ['#6E39F7', '#4d2b98'] : ['#ccc', '#bbb']}
+              colors={
+                otp.length === OTP_LENGTH
+                  ? [COLORS.primary, COLORS.primaryLight]
+                  : ['#C4BAE0', '#C4BAE0']
+              }
+              style={styles.ctaBtnGradient}
               start={{x: 0, y: 0}}
-              end={{x: 1, y: 0}}
-              style={styles.buttonGradient}>
-              <Text style={styles.buttonText}>{strings.verifyOtp}</Text>
-              <Text style={styles.buttonArrow}>→</Text>
+              end={{x: 1, y: 0}}>
+              {isVerifying ? (
+                <Text style={styles.ctaBtnText}>
+                  {lang === 'hi' ? 'सत्यापित हो रहा है...' : 'Verifying...'}
+                </Text>
+              ) : (
+                <>
+                  <Text style={styles.ctaBtnText}>{strings.verifyOtp}</Text>
+                  <Icon2 name="arrow-right" size={20} color={COLORS.white} style={styles.ctaArrow} />
+                </>
+              )}
             </LinearGradient>
           </TouchableOpacity>
 
-          <Text style={styles.noteText}>
-            {language === 'hi'
-              ? 'OTP प्राप्त नहीं हुआ? अपना SMS इनबॉक्स जांचें'
-              : "Didn't receive OTP? Check your SMS inbox"}
+          <Text style={styles.stepLabel}>
+            {strings.step} 2 {strings.of} 3 — {strings.stepOTP}
           </Text>
         </View>
-      </KeyboardAvoidingView>
-    </LinearGradient>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 
 export default OTPVerification;
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  flex: {flex: 1, backgroundColor: COLORS.white},
+  scrollContent: {flexGrow: 1},
+  topSection: {
+    paddingTop: 50,
+    paddingBottom: 40,
+    paddingHorizontal: 24,
+    overflow: 'hidden',
+  },
+  circleDecor: {
+    position: 'absolute',
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    top: -50,
+    right: -60,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    justifyContent: 'flex-end',
-    paddingBottom: 30,
+    marginBottom: 28,
   },
   backBtn: {
-    position: 'absolute',
-    top: 52,
-    left: 20,
-    zIndex: 10,
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
+    backgroundColor: COLORS.white,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    shadowOffset: {width: 0, height: 2},
   },
-  backArrow: {
-    color: '#fff',
-    fontSize: 22,
+  langToggleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.white,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  langToggleText: {
+    color: COLORS.primary,
+    fontSize: 13,
     fontWeight: '700',
+    marginLeft: 4,
   },
-  speakerIcon: {
-    position: 'absolute',
-    top: 47,
-    right: 20,
-    zIndex: 10,
-    backgroundColor: '#fff',
-    padding: 10,
-    borderRadius: 30,
-  },
-  topArea: {
-    alignItems: 'center',
-    marginBottom: 32,
-    marginTop: 110,
-  },
-  iconBg: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
+  speakerBtn: {
+    backgroundColor: COLORS.white,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     justifyContent: 'center',
-    marginBottom: 16,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.35)',
-  },
-  lockEmoji: {
-    fontSize: 40,
+    alignItems: 'center',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    shadowOffset: {width: 0, height: 2},
   },
   topTitle: {
     fontSize: 26,
     fontWeight: '800',
-    color: '#fff',
+    color: COLORS.white,
+    marginTop: 4,
   },
   topSubtitle: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.82)',
-    marginTop: 8,
-    textAlign: 'center',
+    color: 'rgba(255,255,255,0.7)',
+    marginTop: 6,
+  },
+  phoneHighlight: {
+    color: COLORS.accent,
+    fontWeight: '700',
   },
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 24,
-    paddingVertical: 28,
+    backgroundColor: COLORS.white,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    marginTop: -24,
+    flex: 1,
     paddingHorizontal: 24,
-    width: width * 0.92,
-    elevation: 12,
+    paddingTop: 36,
+    paddingBottom: 32,
+    elevation: 20,
     shadowColor: '#000',
-    shadowOpacity: 0.18,
-    shadowRadius: 16,
+    shadowOpacity: 0.06,
+    shadowRadius: 20,
     shadowOffset: {width: 0, height: -4},
   },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1a1a2e',
-    marginBottom: 24,
-    textAlign: 'center',
+  inputLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: 20,
+  },
+  hiddenInput: {
+    position: 'absolute',
+    opacity: 0,
+    width: 1,
+    height: 1,
   },
   otpRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 24,
+    marginBottom: 8,
   },
-  otpBox: {
-    width: BOX_SIZE,
-    height: BOX_SIZE + 8,
-    borderWidth: 1.5,
-    borderColor: '#ddd',
-    borderRadius: 12,
-    textAlign: 'center',
-    fontSize: 22,
-    fontWeight: '700',
-    color: color.purple,
-    backgroundColor: '#f7f7f7',
-  },
-  otpBoxFilled: {
-    borderColor: color.purple,
-    backgroundColor: '#f0ebff',
-  },
-  otpBoxActive: {
-    borderColor: '#6E39F7',
-    borderWidth: 2,
-    backgroundColor: '#fff',
-  },
-  timerRow: {
+  errorRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 24,
+    marginTop: 8,
+    marginBottom: 4,
   },
-  timerText: {
-    fontSize: 13,
-    color: '#999',
+  errorText: {
+    fontSize: 12,
+    color: COLORS.error,
+    marginLeft: 5,
+    flex: 1,
   },
-  resendActive: {
-    fontSize: 15,
-    color: color.purple,
-    fontWeight: '700',
-  },
-  button: {
-    borderRadius: 14,
-    overflow: 'hidden',
-    marginBottom: 16,
-  },
-  buttonDisabled: {
-    opacity: 0.55,
-  },
-  buttonGradient: {
+  resendRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
+    marginTop: 20,
+    marginBottom: 32,
   },
-  buttonText: {
-    color: '#fff',
+  resendLabel: {
+    fontSize: 13,
+    color: COLORS.subtext,
+  },
+  resendLink: {
+    fontSize: 13,
+    color: COLORS.primary,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
+  },
+  resendTimer: {
+    fontSize: 13,
+    color: COLORS.subtext,
+    fontWeight: '600',
+  },
+  ctaBtn: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    elevation: 4,
+    shadowColor: COLORS.primary,
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: {width: 0, height: 4},
+  },
+  ctaBtnDisabled: {
+    elevation: 0,
+    shadowOpacity: 0,
+  },
+  ctaBtnGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 17,
+    paddingHorizontal: 24,
+  },
+  ctaBtnText: {
+    color: COLORS.white,
     fontSize: 17,
     fontWeight: '700',
-    letterSpacing: 0.4,
   },
-  buttonArrow: {
-    color: '#fff',
-    fontSize: 18,
-    marginLeft: 10,
+  ctaArrow: {
+    marginLeft: 8,
   },
-  noteText: {
-    fontSize: 12,
-    color: '#bbb',
+  stepLabel: {
     textAlign: 'center',
+    marginTop: 20,
+    fontSize: 12,
+    color: COLORS.subtext,
   },
 });
