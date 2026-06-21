@@ -10,6 +10,7 @@ import {
   Platform,
   ScrollView,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import Tts from 'react-native-tts';
 import Icon2 from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -17,6 +18,9 @@ import {useLanguage} from '../../language/LanguageContext';
 import languageStrings from '../../language/languageStrings';
 import ScreenNameEnum from '../../routes/screenName.enum';
 import LinearGradient from 'react-native-linear-gradient';
+import {useDispatch} from 'react-redux';
+import {loginSuccess, setTempToken} from '../../redux/feature/authSlice';
+import {sendOtp, verifyOtp} from '../../api/authApi';
 
 const {width} = Dimensions.get('window');
 
@@ -182,6 +186,7 @@ const OTPVerification: React.FC<{navigation: any; route: any}> = ({navigation, r
   const {lang, toggleLang} = useLanguage();
   const strings = languageStrings[lang];
   const phone: string = route?.params?.phone || '';
+  const dispatch = useDispatch();
 
   const [otp, setOtp] = useState('');
   const [focusedIndex, setFocusedIndex] = useState(0);
@@ -221,13 +226,22 @@ const OTPVerification: React.FC<{navigation: any; route: any}> = ({navigation, r
     Tts.speak(strings.otpTts);
   };
 
-  const handleResendOtp = () => {
+  const handleResendOtp = async () => {
     if (!canResend) return;
-    Tts.speak(strings.otpResent);
     setOtp('');
     setError('');
-    startTimer();
-    setTimeout(() => inputRef.current?.focus(), 100);
+    try {
+      await sendOtp({phone, country_code: '+91'});
+      Tts.speak(strings.otpResent);
+      startTimer();
+      setTimeout(() => inputRef.current?.focus(), 100);
+    } catch {
+      setError(
+        lang === 'hi'
+          ? 'OTP फिर से भेजने में समस्या हुई'
+          : 'Could not resend OTP. Try again.',
+      );
+    }
   };
 
   const handleOtpChange = (text: string) => {
@@ -237,20 +251,50 @@ const OTPVerification: React.FC<{navigation: any; route: any}> = ({navigation, r
     setFocusedIndex(Math.min(cleaned.length, OTP_LENGTH - 1));
   };
 
-  const handleVerify = () => {
+  const handleVerify = async () => {
     if (otp.length !== OTP_LENGTH) {
       setError(
         lang === 'hi'
-          ? 'कृपया 6 अंकों का OTP दर्ज करें'
-          : 'Please enter the complete 6-digit OTP',
+          ? 'कृपया 4 अंकों का OTP दर्ज करें'
+          : 'Please enter the complete 4-digit OTP',
       );
       return;
     }
     setIsVerifying(true);
-    setTimeout(() => {
+    try {
+      const res = await verifyOtp({phone, country_code: '+91', otp});
+      if (res.is_new_user) {
+        dispatch(setTempToken(res.temp_token));
+        navigation.navigate(ScreenNameEnum.UserInfoForm, {profile: false});
+      } else {
+        dispatch(
+          loginSuccess({
+            user: res.user,
+            accessToken: res.access_token,
+            refreshToken: res.refresh_token,
+          }),
+        );
+        navigation.navigate(ScreenNameEnum.TabNavigator);
+      }
+    } catch (err: any) {
+      const code = err?.response?.data?.error;
+      const remaining = err?.response?.data?.attempts_remaining;
+      if (code === 'INVALID_OTP') {
+        setError(
+          lang === 'hi'
+            ? `गलत OTP${remaining != null ? ` — ${remaining} कोशिश बची` : ''}`
+            : `Invalid OTP${remaining != null ? ` — ${remaining} attempt(s) left` : ''}`,
+        );
+      } else {
+        setError(
+          lang === 'hi'
+            ? 'OTP सत्यापन में समस्या हुई। पुनः प्रयास करें।'
+            : 'Verification failed. Please try again.',
+        );
+      }
+    } finally {
       setIsVerifying(false);
-      navigation.navigate(ScreenNameEnum.UserInfoForm, {profile: false});
-    }, 800);
+    }
   };
 
   const maskedPhone = phone
@@ -364,9 +408,7 @@ const OTPVerification: React.FC<{navigation: any; route: any}> = ({navigation, r
               start={{x: 0, y: 0}}
               end={{x: 1, y: 0}}>
               {isVerifying ? (
-                <Text style={styles.ctaBtnText}>
-                  {lang === 'hi' ? 'सत्यापित हो रहा है...' : 'Verifying...'}
-                </Text>
+                <ActivityIndicator color={COLORS.white} />
               ) : (
                 <>
                   <Text style={styles.ctaBtnText}>{strings.verifyOtp}</Text>

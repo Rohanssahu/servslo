@@ -1,4 +1,4 @@
-import React, {useMemo, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {
   View,
   Text,
@@ -7,12 +7,18 @@ import {
   TouchableOpacity,
   FlatList,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import Ionicons from 'react-native-vector-icons/Ionicons';
 import {useLanguage} from '../../language/LanguageContext';
 import languageStrings from '../../language/languageStrings';
+import {
+  getNotifications,
+  markNotificationsRead,
+  NotificationApiItem,
+  formatRelativeTime,
+} from '../../api/bookingApi';
 
 const C = {
   purple: '#4d2b98',
@@ -46,11 +52,30 @@ const typeColors: Record<NotifType, {bg: string; icon: string}> = {
   update: {bg: '#E3F2FD', icon: '#2196F3'},
 };
 
-const INITIALLY_READ = new Set(['4', '6', '7', '8', '9', '10']);
+const TYPE_ICONS: Record<NotifType, string> = {
+  booking: 'calendar-check-outline',
+  offer: 'sale',
+  payment: 'cash-multiple',
+  update: 'bell-ring-outline',
+};
+
+function normalizeNotification(item: NotificationApiItem): Notification {
+  return {
+    id: item.id,
+    title: item.title,
+    message: item.message,
+    time: formatRelativeTime(item.created_at),
+    icon: item.icon ?? TYPE_ICONS[item.type] ?? 'bell-outline',
+    type: item.type,
+    read: item.is_read,
+  };
+}
 
 export default function NotificationList({navigation}: any) {
   const [activeTab, setActiveTab] = useState('all');
-  const [readIds, setReadIds] = useState<Set<string>>(INITIALLY_READ);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const {lang} = useLanguage();
 
   const tabs = useMemo(() => {
@@ -64,112 +89,48 @@ export default function NotificationList({navigation}: any) {
     ];
   }, [lang]);
 
-  const notifs = useMemo<Notification[]>(() => {
-    const s = languageStrings[lang];
-    return [
-      {
-        id: '1',
-        title: s.notif1Title,
-        message: s.notif1Msg,
-        time: s.notif2min,
-        icon: 'check-circle-outline',
-        type: 'booking',
-        read: readIds.has('1'),
-      },
-      {
-        id: '2',
-        title: s.notif2Title,
-        message: s.notif2Msg,
-        time: s.notif10min,
-        icon: 'map-marker-check-outline',
-        type: 'booking',
-        read: readIds.has('2'),
-      },
-      {
-        id: '3',
-        title: s.notif3Title,
-        message: s.notif3Msg,
-        time: s.notif30min,
-        icon: 'play-circle-outline',
-        type: 'booking',
-        read: readIds.has('3'),
-      },
-      {
-        id: '4',
-        title: s.notif4Title,
-        message: s.notif4Msg,
-        time: s.notif1hr,
-        icon: 'star-check-outline',
-        type: 'booking',
-        read: readIds.has('4'),
-      },
-      {
-        id: '5',
-        title: s.notif5Title,
-        message: s.notif5Msg,
-        time: s.notif2hr,
-        icon: 'sale',
-        type: 'offer',
-        read: readIds.has('5'),
-      },
-      {
-        id: '6',
-        title: s.notif6Title,
-        message: s.notif6Msg,
-        time: s.notifYesterday,
-        icon: 'tag-outline',
-        type: 'offer',
-        read: readIds.has('6'),
-      },
-      {
-        id: '7',
-        title: s.notif7Title,
-        message: s.notif7Msg,
-        time: s.notif1day,
-        icon: 'check-decagram-outline',
-        type: 'payment',
-        read: readIds.has('7'),
-      },
-      {
-        id: '8',
-        title: s.notif8Title,
-        message: s.notif8Msg,
-        time: s.notif2day,
-        icon: 'cash-refund',
-        type: 'payment',
-        read: readIds.has('8'),
-      },
-      {
-        id: '9',
-        title: s.notif9Title,
-        message: s.notif9Msg,
-        time: s.notif3day,
-        icon: 'bell-ring-outline',
-        type: 'update',
-        read: readIds.has('9'),
-      },
-      {
-        id: '10',
-        title: s.notif10Title,
-        message: s.notif10Msg,
-        time: s.notif4day,
-        icon: 'update',
-        type: 'update',
-        read: readIds.has('10'),
-      },
-    ];
-  }, [lang, readIds]);
+  const fetchNotifications = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await getNotifications();
+      setNotifications(data.map(normalizeNotification));
+    } catch (e: any) {
+      setError(e?.message ?? 'Notifications load failed');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchNotifications();
+  }, [fetchNotifications]);
 
   const t = languageStrings[lang];
+  const notifs = notifications;
   const filtered = notifs.filter(n => activeTab === 'all' || n.type === activeTab);
   const unreadCount = notifs.filter(n => !n.read).length;
 
-  const markAllRead = () => {
-    setReadIds(new Set(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']));
+  const markAllRead = async () => {
+    const unreadIds = notifs.filter(n => !n.read).map(n => n.id);
+    if (unreadIds.length === 0) return;
+    setNotifications(prev => prev.map(n => ({...n, read: true})));
+    try {
+      await markNotificationsRead(unreadIds);
+    } catch {
+      // optimistic update retained; silently fail
+    }
   };
 
-  const markRead = (id: string) => {
-    setReadIds(prev => new Set([...prev, id]));
+  const markRead = async (id: string) => {
+    setNotifications(prev =>
+      prev.map(n => (n.id === id ? {...n, read: true} : n)),
+    );
+    try {
+      await markNotificationsRead([id]);
+    } catch {
+      // optimistic update retained
+    }
   };
 
   const renderItem = ({item}: {item: Notification}) => {
@@ -270,7 +231,19 @@ export default function NotificationList({navigation}: any) {
         </ScrollView>
       </View>
 
-      {filtered.length === 0 ? (
+      {loading ? (
+        <View style={styles.emptyState}>
+          <ActivityIndicator size="large" color={C.purple} />
+        </View>
+      ) : error ? (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyEmoji}>⚠️</Text>
+          <Text style={styles.emptyTitle}>लोड नहीं हुआ</Text>
+          <TouchableOpacity onPress={fetchNotifications} style={styles.retryBtn}>
+            <Text style={styles.retryBtnText}>दोबारा कोशिश करें</Text>
+          </TouchableOpacity>
+        </View>
+      ) : filtered.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyEmoji}>🔔</Text>
           <Text style={styles.emptyTitle}>{t.noNotifications}</Text>
@@ -410,4 +383,12 @@ const styles = StyleSheet.create({
   emptyEmoji: {fontSize: 52, marginBottom: 12},
   emptyTitle: {fontSize: 16, fontWeight: '700', color: C.text, marginBottom: 6},
   emptySub: {fontSize: 13, color: C.sub, textAlign: 'center'},
+  retryBtn: {
+    marginTop: 12,
+    backgroundColor: C.purple,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  retryBtnText: {color: '#fff', fontWeight: '700', fontSize: 14},
 });

@@ -29,6 +29,7 @@ import Voice from '@react-native-voice/voice';
 import SmartSearchBar from '../../component/SmartSearchBar';
 import {
   search,
+  initSearchCatalog,
   POPULAR_SEARCHES,
   getRecentSearches,
   addRecentSearch,
@@ -46,6 +47,7 @@ import {
   ScrollPromoToast,
 } from '../../component/CampaignSystem';
 import WomenCampaignBanner from '../../component/WomenCampaignBanner';
+import {getHomeFeed, getServices, ServiceItem} from '../../api/serviceApi';
 
 const { width } = Dimensions.get('window');
 const BOOKED_W = 170;
@@ -160,6 +162,43 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const { lang } = useLanguage();
   const t = languageStrings[lang];
   const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  // ── Home feed state ───────────────────────────────────────────────────────
+  const [feedLocation, setFeedLocation] = useState<string | null>(null);
+  const [mostBooked, setMostBooked] = useState(MOST_BOOKED);
+  const [rawApiServices, setRawApiServices] = useState<ServiceItem[]>([]);
+
+  useEffect(() => {
+    getHomeFeed()
+      .then(res => {
+        if (res.location) {
+          const loc = [res.location.area, res.location.city].filter(Boolean).join(', ');
+          setFeedLocation(loc || null);
+        }
+        if (res.most_booked?.length) {
+          setMostBooked(
+            res.most_booked.map((s, i) => ({
+              id: s.id,
+              title: lang === 'hi' ? s.name : s.name_en,
+              rating: s.rating?.toFixed(1) ?? '4.8',
+              reviews: `${((s.booking_count ?? 0) / 1000).toFixed(0)}K`,
+              bookings: `${s.booking_count ?? 0}+`,
+              price: `₹${Math.round(s.base_price / 100)}`,
+              emoji: s.emoji,
+              svcKey: null as DailyServiceKey | null,
+            })),
+          );
+        }
+      })
+      .catch(() => {}); // keep fallback data on failure
+
+    getServices()
+      .then(res => {
+        setRawApiServices(res.services);
+        initSearchCatalog(res.services);
+      })
+      .catch(() => {}); // keep static fallbacks on failure
+  }, [lang]);
 
   // ── Walkthrough refs ──────────────────────────────────────────────────────
   const addressRef = useRef<View>(null);
@@ -314,28 +353,57 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   ];
 
   // ── Translated data arrays ────────────────────────────────────────────────
-  const QUICK_SERVICES = [
-    { label: t.electrician, emoji: '⚡', desc: t.wiringRepairs, rating: '4.8', basePrice: 199 },
-    { label: t.plumber, emoji: '🔧', desc: t.leaksPipesTaps, rating: '4.7', basePrice: 149 },
-    { label: t.cleaning, emoji: '🧹', desc: t.fullHomeClean, rating: '4.9', basePrice: 299 },
-    { label: t.acRepair, emoji: '❄️', desc: t.serviceRepair, rating: '4.8', basePrice: 349 },
-    { label: t.carpenter, emoji: '🪚', desc: t.furnitureDoors, rating: '4.6', basePrice: 249 },
-    { label: t.painting, emoji: '🖌️', desc: t.interiorExterior, rating: '4.7', basePrice: 499 },
-    { label: t.pestControl, emoji: '🐛', desc: t.allPestTypes, rating: '4.8', basePrice: 599 },
-    { label: t.more, emoji: '➕', desc: '', rating: '4.8', basePrice: 0 },
+  const QUICK_SERVICES_FALLBACK = [
+    {label: t.electrician, emoji: '⚡', desc: t.wiringRepairs, price: '₹199+', rating: '4.8', basePrice: 199},
+    {label: t.plumber, emoji: '🔧', desc: t.leaksPipesTaps, price: '₹149+', rating: '4.7', basePrice: 149},
+    {label: t.cleaning, emoji: '🧹', desc: t.fullHomeClean, price: '₹299+', rating: '4.9', basePrice: 299},
+    {label: t.acRepair, emoji: '❄️', desc: t.serviceRepair, price: '₹349+', rating: '4.8', basePrice: 349},
+    {label: t.carpenter, emoji: '🪚', desc: t.furnitureDoors, price: '₹249+', rating: '4.6', basePrice: 249},
+    {label: t.painting, emoji: '🖌️', desc: t.interiorExterior, price: '₹499+', rating: '4.7', basePrice: 499},
+    {label: t.pestControl, emoji: '🐛', desc: t.allPestTypes, price: '₹599+', rating: '4.8', basePrice: 599},
+    {label: t.more, emoji: '➕', desc: '', price: '', rating: '', basePrice: 0},
   ];
+
+  const quickServices = rawApiServices.length > 0
+    ? [
+        ...rawApiServices.slice(0, 7).map(s => ({
+          id: s.id,
+          label: lang === 'hi' ? s.name : s.name_en,
+          emoji: s.emoji,
+          desc: s.tags?.[0] ?? s.category,
+          price: `₹${Math.round(s.base_price / 100)}+`,
+          rating: s.rating?.toFixed(1) ?? '4.8',
+          basePrice: Math.round(s.base_price / 100),
+        })),
+        {label: t.more, emoji: '➕', desc: '', price: '', rating: '', basePrice: 0},
+      ]
+    : QUICK_SERVICES_FALLBACK;
   const SALON_ITEMS = [
     { label: t.waxing, emoji: '✨' },
     { label: t.facial, emoji: '💆' },
     { label: t.manicure, emoji: '💅' },
     { label: t.pedicure, emoji: '🦶' },
   ];
-  const APPLIANCE_ITEMS = [
-    { label: t.acService, emoji: '❄️' },
-    { label: t.washingMachine, emoji: '🫧' },
-    { label: t.waterPurifier, emoji: '💧' },
-    { label: t.fridgeRepair, emoji: '🧊' },
+  const APPLIANCE_ITEMS_FALLBACK = [
+    {label: t.acService, emoji: '❄️', desc: 'Clean & annual service', price: '₹349+', rating: '4.8', basePrice: 349},
+    {label: t.washingMachine, emoji: '🫧', desc: 'Repair & service', price: '₹299+', rating: '4.7', basePrice: 299},
+    {label: t.waterPurifier, emoji: '💧', desc: 'Install & repair', price: '₹249+', rating: '4.7', basePrice: 249},
+    {label: t.fridgeRepair, emoji: '🧊', desc: 'All fridge types', price: '₹449+', rating: '4.6', basePrice: 449},
   ];
+
+  const applianceServices = rawApiServices.length > 0
+    ? rawApiServices
+        .filter(s => s.category === 'appliance')
+        .map(s => ({
+          id: s.id,
+          label: lang === 'hi' ? s.name : s.name_en,
+          emoji: s.emoji,
+          desc: s.tags?.[0] ?? 'Expert repair & maintenance',
+          price: `₹${Math.round(s.base_price / 100)}+`,
+          rating: s.rating?.toFixed(1) ?? '4.8',
+          basePrice: Math.round(s.base_price / 100),
+        }))
+    : APPLIANCE_ITEMS_FALLBACK;
   const SMALL_TILES = [
     { key: 'kapde', label: t.laundry, emoji: '👕' },
     { key: 'bartan', label: t.dishwashing, emoji: '🍽️' },
@@ -467,7 +535,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             <View style={s.addressRow}>
               <Text style={s.addressPin}>📍 </Text>
               <Text style={s.addressText} numberOfLines={1}>
-                Mulund Road, Mumbai...
+                {feedLocation ?? 'Mumbai...'}
               </Text>
             </View>
           </TouchableOpacity>
@@ -720,7 +788,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={s.storyList}>
-              {QUICK_SERVICES.map((item, i) => (
+              {quickServices.map((item, i) => (
                 <TouchableOpacity
                   key={i}
                   style={s.storyItem}
@@ -731,7 +799,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                         title: 'All Services',
                       });
                     } else {
-                      navigation.navigate(ScreenNameEnum.ServiceBookingScreen, { service: item });
+                      navigation.navigate(ScreenNameEnum.ServiceBookingScreen, {service: item});
                     }
                   }}
                   activeOpacity={0.8}>
@@ -903,7 +971,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={s.hPad}>
-              {MOST_BOOKED.map((item, i) => (
+              {mostBooked.map((item, i) => (
                 <TouchableOpacity
                   key={i}
                   style={s.bookedCard}
@@ -912,7 +980,15 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                       sheetRef.current?.open(item.svcKey);
                     } else {
                       navigation.navigate(ScreenNameEnum.ServiceBookingScreen, {
-                        service: { label: item.title, emoji: item.emoji, basePrice: 160, rating: item.rating },
+                        service: {
+                          id: item.id,
+                          label: item.title,
+                          emoji: item.emoji,
+                          desc: 'Professional home service',
+                          price: item.price,
+                          basePrice: 160,
+                          rating: item.rating,
+                        },
                       });
                     }
                   }}
@@ -1023,14 +1099,12 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={s.hPad}>
-              {APPLIANCE_ITEMS.map((srv, i) => (
+              {applianceServices.map((srv, i) => (
                 <TouchableOpacity
                   key={i}
                   style={s.srvTile}
                   onPress={() =>
-                    navigation.navigate(ScreenNameEnum.ServiceBookingScreen, {
-                      service: { label: srv.label, emoji: srv.emoji, basePrice: 299, rating: '4.8' },
-                    })
+                    navigation.navigate(ScreenNameEnum.ServiceBookingScreen, {service: srv})
                   }
                   activeOpacity={0.8}>
                   <View style={s.applianceEmojiBox}>

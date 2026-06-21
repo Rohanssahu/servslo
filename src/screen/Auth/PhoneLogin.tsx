@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import Tts from 'react-native-tts';
 import Icon2 from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -17,6 +18,7 @@ import {useLanguage} from '../../language/LanguageContext';
 import languageStrings from '../../language/languageStrings';
 import ScreenNameEnum from '../../routes/screenName.enum';
 import LinearGradient from 'react-native-linear-gradient';
+import {sendOtp} from '../../api/authApi';
 
 const COLORS = {
   primaryDark: '#1E0B5E',
@@ -113,6 +115,7 @@ const PhoneLogin: React.FC<{navigation: any}> = ({navigation}) => {
   const [phone, setPhone] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const strings = languageStrings[lang];
 
@@ -121,7 +124,7 @@ const PhoneLogin: React.FC<{navigation: any}> = ({navigation}) => {
     Tts.speak(strings.tts);
   };
 
-  const validateAndContinue = () => {
+  const validateAndContinue = async () => {
     if (phone.length !== 10) {
       setError(
         lang === 'hi'
@@ -131,7 +134,28 @@ const PhoneLogin: React.FC<{navigation: any}> = ({navigation}) => {
       return;
     }
     setError('');
-    navigation.navigate(ScreenNameEnum.OTPVerification, {phone});
+    setLoading(true);
+    try {
+      await sendOtp({phone, country_code: '+91'});
+      navigation.navigate(ScreenNameEnum.OTPVerification, {phone});
+    } catch (err: any) {
+      const code = err?.response?.data?.error;
+      if (code === 'TOO_MANY_REQUESTS') {
+        setError(
+          lang === 'hi'
+            ? 'बहुत बार कोशिश की। कुछ देर बाद आज़माएं।'
+            : 'Too many requests. Try again later.',
+        );
+      } else {
+        setError(
+          lang === 'hi'
+            ? 'OTP भेजने में समस्या हुई। पुनः प्रयास करें।'
+            : 'Could not send OTP. Please retry.',
+        );
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -217,20 +241,27 @@ const PhoneLogin: React.FC<{navigation: any}> = ({navigation}) => {
           </View>
 
           <TouchableOpacity
-            style={[styles.ctaBtn, phone.length !== 10 && styles.ctaBtnDisabled]}
+            style={[styles.ctaBtn, (phone.length !== 10 || loading) && styles.ctaBtnDisabled]}
             onPress={validateAndContinue}
-            activeOpacity={0.85}>
+            activeOpacity={0.85}
+            disabled={loading}>
             <LinearGradient
               colors={
-                phone.length === 10
+                phone.length === 10 && !loading
                   ? [COLORS.primary, COLORS.primaryLight]
                   : ['#C4BAE0', '#C4BAE0']
               }
               style={styles.ctaBtnGradient}
               start={{x: 0, y: 0}}
               end={{x: 1, y: 0}}>
-              <Text style={styles.ctaBtnText}>{strings.continue}</Text>
-              <Icon2 name="arrow-right" size={20} color={COLORS.white} style={styles.ctaArrow} />
+              {loading ? (
+                <ActivityIndicator color={COLORS.white} />
+              ) : (
+                <>
+                  <Text style={styles.ctaBtnText}>{strings.continue}</Text>
+                  <Icon2 name="arrow-right" size={20} color={COLORS.white} style={styles.ctaArrow} />
+                </>
+              )}
             </LinearGradient>
           </TouchableOpacity>
 

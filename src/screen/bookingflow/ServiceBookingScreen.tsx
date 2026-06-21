@@ -9,11 +9,13 @@ import {
   TouchableOpacity,
   Platform,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import ScreenNameEnum from '../../routes/screenName.enum';
 import SpeakerButton from '../../component/SpeakerButton';
+import {previewBooking} from '../../api/bookingApi';
 
 const C = {
   purple: '#6E39F7',
@@ -72,6 +74,7 @@ type Props = {
   route: {
     params: {
       service: {
+        id?: string;
         label: string;
         emoji: string;
         desc: string;
@@ -106,20 +109,59 @@ export default function ServiceBookingScreen({navigation, route}: Props) {
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [selectedUrgency, setSelectedUrgency] = useState<string>('30min');
   const [selectedAddr, setSelectedAddr] = useState('1');
+  const [previewLoading, setPreviewLoading] = useState(false);
 
-  const handleBook = () => {
+  const handleBook = async () => {
     if (!selectedTime) {
       Alert.alert('समय चुनें', 'कृपया सेवा का समय चुनें');
       return;
     }
+
+    let serviceCharge = service.basePrice;
+    let arrivalCharge = ARRIVAL_CHARGE;
+    let amount = total;
+
+    if (!service.id && __DEV__) {
+      console.warn(
+        '[ServiceBookingScreen] service.id missing — previewBooking API disabled, using fallback pricing.',
+        {label: service.label},
+      );
+    }
+
+    if (service.id) {
+      setPreviewLoading(true);
+      try {
+        const preview = await previewBooking({
+          service_id: service.id,
+          address_id: selectedAddr,
+          scheduled_day: selectedDay,
+          scheduled_time: selectedTime,
+          urgency: selectedUrgency as '10min' | '30min' | '1hr',
+        });
+        serviceCharge = preview.service_charge;
+        arrivalCharge = preview.arrival_charge;
+        amount = preview.total;
+      } catch {
+        // fall back to hardcoded values
+      } finally {
+        setPreviewLoading(false);
+      }
+    }
+
     const urgencyLabel = URGENCY_OPTIONS.find(u => u.key === selectedUrgency)?.title ?? '';
     navigation.navigate(ScreenNameEnum.PaymentScreen, {
-      amount: total,
-      serviceCharge: service.basePrice,
-      arrivalCharge: ARRIVAL_CHARGE,
+      amount,
+      serviceCharge,
+      arrivalCharge,
       serviceName: service.label,
       scheduledTime: `${DAYS[selectedDay].sublabel}, ${selectedTime} · ${urgencyLabel}`,
       bookingId: `BK${Date.now()}`,
+      // Booking creation params for PaymentScreen
+      serviceId: service.id,
+      addressId: selectedAddr,
+      scheduledDay: selectedDay,
+      scheduledTimeSlot: selectedTime,
+      urgency: selectedUrgency,
       preSelectedProvider,
     });
   };
@@ -338,10 +380,20 @@ export default function ServiceBookingScreen({navigation, route}: Props) {
           <Text style={s.bottomPriceLabel}>Total</Text>
           <Text style={s.bottomPriceVal}>₹{total}</Text>
         </View>
-        <TouchableOpacity onPress={handleBook} activeOpacity={0.9} style={{flex: 1}}>
+        <TouchableOpacity
+          onPress={handleBook}
+          activeOpacity={0.9}
+          style={{flex: 1}}
+          disabled={previewLoading}>
           <LinearGradient colors={C.grad} style={s.bookBtn}>
-            <Icon name="calendar-outline" size={18} color="#fff" />
-            <Text style={s.bookBtnText}>Book Service</Text>
+            {previewLoading ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <Icon name="calendar-outline" size={18} color="#fff" />
+                <Text style={s.bookBtnText}>Book Service</Text>
+              </>
+            )}
           </LinearGradient>
         </TouchableOpacity>
       </View>

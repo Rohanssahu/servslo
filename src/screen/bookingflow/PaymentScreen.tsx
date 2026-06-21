@@ -1,4 +1,4 @@
-import React, {useState, useRef, useEffect} from 'react';
+import React, {useState, useRef, useEffect, useCallback} from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import ScreenNameEnum from '../../routes/screenName.enum';
 import SpeakerButton from '../../component/SpeakerButton';
+import {createBooking} from '../../api/bookingApi';
 
 const C = {
   grad: ['#6E39F7', '#8E57FF', '#B78CFF'] as string[],
@@ -68,6 +69,12 @@ type Props = {
       bookingId: string;
       isArrivalOnly?: boolean;
       preSelectedProvider?: PreSelectedProvider;
+      // Booking creation params (from ServiceBookingScreen)
+      serviceId?: string;
+      addressId?: string;
+      scheduledDay?: number;
+      scheduledTimeSlot?: string;
+      urgency?: string;
     };
   };
 };
@@ -82,6 +89,11 @@ export default function PaymentScreen({route, navigation}: Props) {
     bookingId,
     isArrivalOnly = false,
     preSelectedProvider,
+    serviceId,
+    addressId,
+    scheduledDay,
+    scheduledTimeSlot,
+    urgency,
   } = route.params;
 
   const scriptHi = isArrivalOnly
@@ -157,7 +169,7 @@ export default function PaymentScreen({route, navigation}: Props) {
     ]).start();
   }, [payPhase]);
 
-  const payNow = () => {
+  const payNow = useCallback(async () => {
     if (!mode) {
       Alert.alert('भुगतान मोड चुनें', 'कृपया Cash या UPI में से कोई एक चुनें');
       return;
@@ -166,30 +178,66 @@ export default function PaymentScreen({route, navigation}: Props) {
       Alert.alert('UPI App चुनें', 'कृपया UPI app चुनें');
       return;
     }
+
     setPayPhase(0);
     [pulse1, pulse2, pulse3, pc1, pc2, pc3, provFade].forEach(a => a.setValue(0));
     provSlide.setValue(55);
     setShowModal(true);
     Animated.spring(scale, {toValue: 1, useNativeDriver: true}).start();
+
     if (isArrivalOnly) {
       setTimeout(() => navigation.goBack(), 2800);
       return;
     }
+
+    let finalBookingId = bookingId;
+
+    if (serviceId) {
+      try {
+        const result = await createBooking({
+          service_id: serviceId,
+          address_id: addressId ?? '1',
+          scheduled_day: scheduledDay ?? 0,
+          scheduled_time: scheduledTimeSlot ?? '',
+          urgency: (urgency as '10min' | '30min' | '1hr') ?? '30min',
+          payment_mode: mode,
+          pay_plan: payPlan,
+          coupon_code: appliedCoupon?.code,
+          provider_id: (preSelectedProvider as any)?.id,
+        });
+        finalBookingId = result.booking_id;
+      } catch (err: any) {
+        setShowModal(false);
+        Alert.alert(
+          'Booking Failed',
+          err?.response?.data?.message ?? 'कुछ गड़बड़ हुई, दोबारा कोशिश करें',
+        );
+        return;
+      }
+    }
+
     if (preSelectedProvider) {
-      // Provider already chosen — skip searching, go straight to assigned
       setTimeout(() => setPayPhase(2), 1400);
       setTimeout(() => {
-        navigation.replace(ScreenNameEnum.BookingTrackScreen, {bookingId});
+        navigation.replace(ScreenNameEnum.BookingTrackScreen, {
+          bookingId: finalBookingId,
+        });
       }, 4800);
     } else {
-      // Normal flow — search for a provider
       setTimeout(() => setPayPhase(1), 1200);
       setTimeout(() => setPayPhase(2), 5000);
       setTimeout(() => {
-        navigation.replace(ScreenNameEnum.BookingTrackScreen, {bookingId});
+        navigation.replace(ScreenNameEnum.BookingTrackScreen, {
+          bookingId: finalBookingId,
+        });
       }, 7500);
     }
-  };
+  }, [
+    mode, upiApp, isArrivalOnly, serviceId, addressId, scheduledDay,
+    scheduledTimeSlot, urgency, payPlan, appliedCoupon, preSelectedProvider,
+    bookingId, pulse1, pulse2, pulse3, pc1, pc2, pc3, provFade, provSlide, scale,
+    navigation,
+  ]);
 
   return (
     <SafeAreaView style={s.safe}>

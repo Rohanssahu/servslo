@@ -10,6 +10,7 @@ import {
   Dimensions,
   Platform,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Voice from '@react-native-voice/voice';
@@ -17,11 +18,13 @@ import ScreenNameEnum from '../../routes/screenName.enum';
 import SmartSearchBar from '../../component/SmartSearchBar';
 import {useLanguage} from '../../language/LanguageContext';
 import {search, ServiceResult} from '../../utils/searchEngine';
+import {getServices, ServiceItem as ApiService, CategoryItem as ApiCategory} from '../../api/serviceApi';
 
 const {width} = Dimensions.get('window');
 const CARD_W = (width - 48) / 2;
 
-const CATEGORIES = [
+// Fallback data shown while API loads or if it fails
+const FALLBACK_CATEGORIES = [
   {key: 'all', label: 'सभी'},
   {key: 'quick', label: 'Quick Services'},
   {key: 'cleaning', label: 'Cleaning'},
@@ -30,40 +33,15 @@ const CATEGORIES = [
   {key: 'other', label: 'Other'},
 ];
 
-const ALL_SERVICES = [
+const FALLBACK_SERVICES: ServiceItem[] = [
   {key: 'quick', label: 'Electrician', emoji: '⚡', desc: 'Wiring & repairs', price: '₹199+', rating: '4.8', basePrice: 199},
   {key: 'quick', label: 'Plumber', emoji: '🔧', desc: 'Leaks, pipes, taps', price: '₹149+', rating: '4.7', basePrice: 149},
-  {key: 'quick', label: 'AC Repair', emoji: '❄️', desc: 'Service & repair', price: '₹349+', rating: '4.8', basePrice: 349},
-  {key: 'quick', label: 'Carpenter', emoji: '🪚', desc: 'Furniture, doors', price: '₹249+', rating: '4.6', basePrice: 249},
-  {key: 'quick', label: 'Painting', emoji: '🖌️', desc: 'Interior & exterior', price: '₹499+', rating: '4.7', basePrice: 499},
-  {key: 'quick', label: 'Pest Control', emoji: '🐛', desc: 'All pest types', price: '₹599+', rating: '4.8', basePrice: 599},
-  {key: 'quick', label: 'TV Mounting', emoji: '📺', desc: 'Wall mount setup', price: '₹199+', rating: '4.8', basePrice: 199},
-  {key: 'quick', label: 'Gas Stove', emoji: '🔥', desc: 'Repair & clean', price: '₹149+', rating: '4.5', basePrice: 149},
   {key: 'cleaning', label: 'Home Cleaning', emoji: '🧹', desc: 'Full home clean', price: '₹299+', rating: '4.9', basePrice: 299},
-  {key: 'cleaning', label: 'Bathroom Clean', emoji: '🚿', desc: 'Deep scrub', price: '₹519+', rating: '4.8', basePrice: 519},
-  {key: 'cleaning', label: 'Kitchen Clean', emoji: '🍳', desc: 'Chimney & tiles', price: '₹449+', rating: '4.7', basePrice: 449},
-  {key: 'cleaning', label: 'Sofa Clean', emoji: '🛋️', desc: 'Dry & wet clean', price: '₹399+', rating: '4.6', basePrice: 399},
-  {key: 'cleaning', label: 'Laundry', emoji: '👕', desc: 'Wash & fold', price: '₹99+', rating: '4.5', basePrice: 99},
-  {key: 'cleaning', label: 'Dishwashing', emoji: '🍽️', desc: 'Vessel cleaning', price: '₹149+', rating: '4.5', basePrice: 149},
-  {key: 'cleaning', label: 'Washing Machine', emoji: '🫧', desc: 'Deep clean', price: '₹160+', rating: '4.8', basePrice: 160},
-  {key: 'cleaning', label: 'Car Wash', emoji: '🚗', desc: 'Full detailing', price: '₹299+', rating: '4.6', basePrice: 299},
-  {key: 'salon', label: 'Waxing', emoji: '✨', desc: 'Full body wax', price: '₹299+', rating: '4.7', basePrice: 299},
-  {key: 'salon', label: 'Facial', emoji: '💆', desc: 'Glowing skin', price: '₹399+', rating: '4.8', basePrice: 399},
-  {key: 'salon', label: 'Manicure', emoji: '💅', desc: 'Hand & nail care', price: '₹249+', rating: '4.6', basePrice: 249},
-  {key: 'salon', label: 'Pedicure', emoji: '🦶', desc: 'Foot care', price: '₹299+', rating: '4.7', basePrice: 299},
-  {key: 'salon', label: 'Haircut', emoji: '✂️', desc: 'Trim & style', price: '₹199+', rating: '4.7', basePrice: 199},
-  {key: 'salon', label: 'Makeup', emoji: '💄', desc: 'Party & bridal', price: '₹999+', rating: '4.9', basePrice: 999},
   {key: 'appliance', label: 'AC Service', emoji: '❄️', desc: 'Clean & service', price: '₹349+', rating: '4.8', basePrice: 349},
-  {key: 'appliance', label: 'Washing Machine', emoji: '🫧', desc: 'Repair & service', price: '₹299+', rating: '4.7', basePrice: 299},
-  {key: 'appliance', label: 'Water Purifier', emoji: '💧', desc: 'Install & repair', price: '₹249+', rating: '4.7', basePrice: 249},
-  {key: 'appliance', label: 'Fridge Repair', emoji: '🧊', desc: 'All fridge types', price: '₹449+', rating: '4.6', basePrice: 449},
-  {key: 'appliance', label: 'TV Repair', emoji: '📺', desc: 'Screen & parts', price: '₹499+', rating: '4.6', basePrice: 499},
-  {key: 'appliance', label: 'Microwave', emoji: '📡', desc: 'Repair & clean', price: '₹249+', rating: '4.5', basePrice: 249},
-  {key: 'other', label: 'Yoga / Fitness', emoji: '🧘', desc: 'At-home trainer', price: '₹499+', rating: '4.8', basePrice: 499},
-  {key: 'other', label: 'Tutoring', emoji: '📚', desc: 'Home tutor', price: '₹299+', rating: '4.9', basePrice: 299},
 ];
 
 type ServiceItem = {
+  id?: string;
   key: string;
   label: string;
   emoji: string;
@@ -91,6 +69,36 @@ export default function AllServicesScreen({navigation, route}: Props) {
   const [searchFocused, setSearchFocused] = useState(false);
   const debounceRef = useRef<any>(null);
 
+  const [allServices, setAllServices] = useState<ServiceItem[]>(FALLBACK_SERVICES);
+  const [categories, setCategories] = useState(FALLBACK_CATEGORIES);
+  const [loadingServices, setLoadingServices] = useState(true);
+
+  useEffect(() => {
+    getServices()
+      .then(res => {
+        const mapped: ServiceItem[] = res.services.map(s => ({
+          id: s.id,
+          key: s.category,
+          label: lang === 'hi' ? s.name : s.name_en,
+          emoji: s.emoji,
+          desc: s.tags?.join(', ') ?? s.category,
+          price: `₹${Math.round(s.base_price / 100)}+`,
+          rating: s.rating?.toFixed(1) ?? '4.5',
+          basePrice: Math.round(s.base_price / 100),
+        }));
+        const cats = [
+          {key: 'all', label: lang === 'hi' ? 'सभी' : 'All'},
+          ...res.categories
+            .filter(c => c.id !== 'all')
+            .map(c => ({key: c.id, label: lang === 'hi' ? c.label : c.label_en})),
+        ];
+        setAllServices(mapped);
+        setCategories(cats);
+      })
+      .catch(() => {}) // keep fallback data on failure
+      .finally(() => setLoadingServices(false));
+  }, [lang]);
+
   const isSearching = searchFocused && searchText.trim().length >= 2;
 
   // Filtered grid — either search results or tab-filtered catalog
@@ -105,8 +113,8 @@ export default function AllServicesScreen({navigation, route}: Props) {
         basePrice: r.basePrice,
       }))
     : activeTab === 'all'
-    ? ALL_SERVICES
-    : ALL_SERVICES.filter(item => item.key === activeTab);
+    ? allServices
+    : allServices.filter(item => item.key === activeTab);
 
   const needFiller = displayItems.length % 2 !== 0;
 
@@ -231,7 +239,7 @@ export default function AllServicesScreen({navigation, route}: Props) {
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={s.tabList}>
-            {CATEGORIES.map(cat => (
+            {categories.map(cat => (
               <TouchableOpacity
                 key={cat.key}
                 style={[s.tab, activeTab === cat.key && s.tabActive]}
@@ -256,7 +264,9 @@ export default function AllServicesScreen({navigation, route}: Props) {
       </Text>
 
       {/* 2-column grid */}
-      {displayItems.length > 0 ? (
+      {loadingServices && displayItems.length === 0 ? (
+        <ActivityIndicator color="#4d2b98" style={{marginTop: 40}} />
+      ) : displayItems.length > 0 ? (
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={s.grid}

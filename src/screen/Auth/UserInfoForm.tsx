@@ -11,6 +11,8 @@ import {
   StatusBar,
   Modal,
   Pressable,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import Tts from 'react-native-tts';
 import {launchCamera, launchImageLibrary} from 'react-native-image-picker';
@@ -24,22 +26,29 @@ import {color} from '../../constant';
 import ScreenNameEnum from '../../routes/screenName.enum';
 import {useRoute} from '@react-navigation/native';
 import TermsAndConditionsModal from './TermsAndConditionsModal';
+import {useDispatch, useSelector} from 'react-redux';
+import {loginSuccess, setUser} from '../../redux/feature/authSlice';
+import {completeProfile} from '../../api/authApi';
+import {updateProfile as patchProfile} from '../../api/userApi';
+import {store} from '../../redux/Store';
 
 const {width} = Dimensions.get('window');
 
 const UserInfoForm = ({navigation}: {navigation: any}) => {
- const {lang, toggleLang} = useLanguage();
-
-const language = lang;
+  const {lang, toggleLang} = useLanguage();
+  const language = lang;
   const strings = languageStrings[language];
   const route = useRoute();
   const {profile} = (route.params as any) || {};
+  const dispatch = useDispatch();
+  const existingUser = useSelector((s: any) => s.auth?.userData);
 
-  const [name, setName] = useState('');
-  const [gender, setGender] = useState('');
-  const [photo, setPhoto] = useState<string | null>(null);
+  const [name, setName] = useState(profile && existingUser?.name ? existingUser.name : '');
+  const [gender, setGender] = useState(profile && existingUser?.gender ? existingUser.gender : '');
+  const [photo, setPhoto] = useState<string | null>(profile && existingUser?.photo_url ? existingUser.photo_url : null);
   const [showModal, setShowModal] = useState(false);
   const [showPhotoSheet, setShowPhotoSheet] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const ttsSpeak = (text: string) => {
     Tts.stop();
@@ -205,18 +214,54 @@ const language = lang;
 
           {/* Submit Button */}
           <TouchableOpacity
-            style={[styles.button, !isFormValid && styles.buttonDisabled]}
-            onPress={() =>
-              isFormValid && navigation.navigate(ScreenNameEnum.TabNavigator)
-            }
+            style={[styles.button, (!isFormValid || loading) && styles.buttonDisabled]}
+            onPress={async () => {
+              if (!isFormValid || loading) return;
+              setLoading(true);
+              try {
+                const form = new FormData();
+                form.append('name', name.trim());
+                form.append('gender', gender);
+                form.append('language', language);
+                const isLocalPhoto = photo && !photo.startsWith('http');
+                if (isLocalPhoto) {
+                  form.append('photo', {uri: photo, type: 'image/jpeg', name: 'photo.jpg'} as any);
+                }
+                if (profile) {
+                  // Edit existing profile
+                  const res = await patchProfile(form);
+                  dispatch(setUser(res.user));
+                  navigation.goBack();
+                } else {
+                  // New user registration
+                  const tempToken = (store.getState() as any).auth?.tempToken ?? '';
+                  const res = await completeProfile(form, tempToken);
+                  dispatch(loginSuccess({user: res.user, accessToken: res.access_token, refreshToken: res.refresh_token}));
+                  navigation.navigate(ScreenNameEnum.TabNavigator);
+                }
+              } catch {
+                Alert.alert(
+                  language === 'hi' ? 'समस्या हुई' : 'Error',
+                  language === 'hi' ? 'प्रोफाइल सेव नहीं हो सकी। पुनः प्रयास करें।' : 'Could not save profile. Please try again.',
+                );
+              } finally {
+                setLoading(false);
+              }
+            }}
             activeOpacity={isFormValid ? 0.8 : 1}>
             <LinearGradient
               colors={isFormValid ? ['#6E39F7', '#4d2b98'] : ['#ccc', '#bbb']}
               start={{x: 0, y: 0}}
               end={{x: 1, y: 0}}
               style={styles.buttonGradient}>
-              <Text style={styles.buttonText}>{strings.next}</Text>
-              <Text style={styles.buttonArrow}>→</Text>
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Text style={styles.buttonText}>{strings.next}</Text>
+                  <Text style={styles.buttonArrow}>→</Text>
+                </>
+              )}
             </LinearGradient>
           </TouchableOpacity>
 

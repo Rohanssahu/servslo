@@ -1,9 +1,7 @@
 import Language from "../screen/Auth/Language";
 import LocationFetcher from "../screen/Auth/LocationFetcher";
 import OTPVerification from "../screen/Auth/OTPVerification";
-import PartnerDocumentsScreen from "../screen/Auth/PartnerDocumentsScreen";
 import UserInfoForm from "../screen/Auth/UserInfoForm";
-import PartnerServiceSelectionScreen from "../screen/Auth/PartnerServiceSelectionScreen";
 import PhoneLogin from "../screen/Auth/PhoneLogin";
 import Splash from "../screen/Auth/Splash";
 import HomeScreen from "../screen/BottamTab/HomeScreen";
@@ -17,7 +15,6 @@ import JobDetailsScreen from "../screen/Feature/JobDetailsScreen";
 import LocationPickerScreen from "../screen/Feature/LocationPickerScreen";
 import NotificationList from "../screen/Feature/NotificationList";
 import HelpSupportScreen from "../screen/Feature/PartnerHelpSupportScreen";
-import ReferralScreen from "../screen/Feature/ReferralScreen";
 import ReferToEarnScreen from "../screen/Feature/ReferToEarnScreen";
 import ReviewBookingScreen from "../screen/Feature/ReviewBookingScreen";
 import WalletScreen from "../screen/Feature/WalletScreen";
@@ -49,7 +46,6 @@ const _routes = {
     { name: ScreenNameEnum.HowToUseScreen, Component: HowToUseScreen },
     { name: ScreenNameEnum.HelpSupportScreen, Component: HelpSupportScreen },
     { name: ScreenNameEnum.WalletScreen, Component: WalletScreen },
-    { name: ScreenNameEnum.ReferralScreen, Component: ReferralScreen },
     { name: ScreenNameEnum.ReviewBookingScreen, Component: ReviewBookingScreen },
     { name: ScreenNameEnum.AddressesScreen, Component: AddressesScreen },
     { name: ScreenNameEnum.LocationPickerScreen, Component: LocationPickerScreen },

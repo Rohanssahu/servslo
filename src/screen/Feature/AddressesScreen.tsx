@@ -1,4 +1,4 @@
-import React, {memo, useState} from 'react';
+import React, {memo, useEffect, useState} from 'react';
 import {
   SafeAreaView,
   View,
@@ -8,10 +8,13 @@ import {
   ScrollView,
   Platform,
   StatusBar,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import LinearGradient from 'react-native-linear-gradient';
 import ScreenNameEnum from '../../routes/screenName.enum';
+import {listAddresses, deleteAddress as deleteAddressApi, AddressItem as ApiAddress} from '../../api/userApi';
 
 // ─── Colors (declared first — used in TYPE_META below) ───────────────────────
 const C = {
@@ -35,14 +38,18 @@ type Address = {
   type?: AddressType;
 };
 
+const toAddress = (a: ApiAddress): Address => ({
+  id: a.id,
+  type: (a.type as AddressType) ?? 'home',
+  title: a.label || a.type || 'Address',
+  line: [a.line1, a.line2, a.city, a.pincode].filter(Boolean).join(', '),
+});
+
 type Filter = 'all' | AddressType;
 
 type Props = {
-  addresses?: Address[];
   onBack?: () => void;
   onAddNew?: () => void;
-  onEdit?: (id: string) => void;
-  onDelete?: (id: string) => void;
   onSelect?: (id: string) => void;
   initialSelectedId?: string;
   navigation: any;
@@ -145,26 +152,29 @@ const EmptyState = ({onAdd}: {onAdd: () => void}) => (
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 const AddressesScreen: React.FC<Props> = ({
-  addresses = [
-    {
-      id: '1',
-      title: 'Home',
-      type: 'home',
-      line: '102, Shanti, Tambe Nagar, Opp. KrishnaKunj Tower, Mulund West, Mumbai – 400080',
-    },
-  ],
   onBack,
   onAddNew,
-  onEdit,
-  onDelete,
   onSelect,
   initialSelectedId,
   navigation,
 }) => {
-  const [selectedId, setSelectedId] = useState<string | undefined>(
-    initialSelectedId ?? addresses?.[0]?.id,
-  );
+  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [loadingAddresses, setLoadingAddresses] = useState(true);
+  const [selectedId, setSelectedId] = useState<string | undefined>(initialSelectedId);
   const [activeFilter, setActiveFilter] = useState<Filter>('all');
+
+  useEffect(() => {
+    listAddresses()
+      .then(res => {
+        const mapped = res.addresses.map(toAddress);
+        setAddresses(mapped);
+        if (!initialSelectedId && mapped.length > 0) {
+          setSelectedId(mapped[0].id);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingAddresses(false));
+  }, []);
 
   const handleSelect = (id: string) => {
     setSelectedId(id);
@@ -174,6 +184,28 @@ const AddressesScreen: React.FC<Props> = ({
   const goToAdd = () => {
     onAddNew?.();
     navigation.navigate(ScreenNameEnum.LocationPickerScreen);
+  };
+
+  const handleDelete = (id: string) => {
+    Alert.alert(
+      'Delete Address',
+      'Are you sure you want to remove this address?',
+      [
+        {text: 'Cancel', style: 'cancel'},
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteAddressApi(id);
+              setAddresses(prev => prev.filter(a => a.id !== id));
+            } catch {
+              Alert.alert('Error', 'Could not delete address. Try again.');
+            }
+          },
+        },
+      ],
+    );
   };
 
   const filtered =
@@ -248,7 +280,9 @@ const AddressesScreen: React.FC<Props> = ({
         </ScrollView>
 
         {/* ── Saved Addresses ── */}
-        {filtered.length === 0 ? (
+        {loadingAddresses ? (
+          <ActivityIndicator color={C.purple} style={{marginTop: 32}} />
+        ) : filtered.length === 0 ? (
           <EmptyState onAdd={goToAdd} />
         ) : (
           <>
@@ -261,8 +295,8 @@ const AddressesScreen: React.FC<Props> = ({
                 item={a}
                 selected={selectedId === a.id}
                 onPress={() => handleSelect(a.id)}
-                onEdit={() => onEdit?.(a.id)}
-                onDelete={() => onDelete?.(a.id)}
+                onEdit={() => navigation.navigate(ScreenNameEnum.LocationPickerScreen, {addressId: a.id})}
+                onDelete={() => handleDelete(a.id)}
               />
             ))}
           </>

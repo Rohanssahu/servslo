@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, {useEffect, useState} from 'react';
 import {View, Text, StyleSheet, StatusBar, TouchableOpacity, ScrollView, Alert} from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { color } from '../../constant';
@@ -7,22 +7,53 @@ import { useLanguage } from '../../language/LanguageContext';
 import languageStrings from '../../language/languageStrings';
 import ScreenNameEnum from '../../routes/screenName.enum';
 import HeaderComponent from '../Feature/HeaderComponent';
+import {useDispatch, useSelector} from 'react-redux';
+import {logout, setUser} from '../../redux/feature/authSlice';
+import {getProfile} from '../../api/userApi';
+import {logoutApi, deleteAccountApi} from '../../api/authApi';
 
 export default function ProfileSettingsScreen({ navigation }) {
   const {lang, toggleLang} = useLanguage();
   const t = languageStrings[lang];
+  const dispatch = useDispatch();
+  const userData = useSelector((s: any) => s.auth?.userData);
+  const [location, setLocation] = useState('Mumbai');
+
+  useEffect(() => {
+    getProfile()
+      .then(user => dispatch(setUser(user)))
+      .catch(() => {}); // graceful — show cached Redux data on failure
+  }, []);
 
   const handleLogout = () => {
     Alert.alert(t.logoutTitle, t.logoutConfirm, [
       {text: t.no},
-      {text: t.yes, onPress: () => navigation.navigate(ScreenNameEnum.PhoneLogin)},
+      {
+        text: t.yes,
+        onPress: async () => {
+          try {
+            await logoutApi();
+          } catch {}
+          dispatch(logout());
+          navigation.navigate(ScreenNameEnum.PhoneLogin);
+        },
+      },
     ]);
   };
 
   const handleDeleteData = () => {
     Alert.alert(t.deleteDataTitle, t.deleteDataConfirm, [
       {text: t.no},
-      {text: t.yes, onPress: () => console.log('Data Deleted')},
+      {
+        text: t.yes,
+        onPress: async () => {
+          try {
+            await deleteAccountApi();
+          } catch {}
+          dispatch(logout());
+          navigation.navigate(ScreenNameEnum.PhoneLogin);
+        },
+      },
     ]);
   };
 
@@ -37,9 +68,9 @@ export default function ProfileSettingsScreen({ navigation }) {
       <HeaderComponent
         language={lang}
         setLanguage={toggleLang}
-        location="Indore, MP"
-        notificationCount={5}
-        onNotificationPress={() => console.log('Notification clicked')}
+        location={userData?.phone ? `+91 ${userData.phone}` : 'Mumbai'}
+        notificationCount={0}
+        onNotificationPress={() => navigation.navigate(ScreenNameEnum.NotificationList)}
       />
 
       {/* Referral Banner */}

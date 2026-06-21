@@ -1,4 +1,4 @@
-import React, {useRef, useState} from 'react';
+import React, {useCallback, useRef, useState} from 'react';
 import {
   View,
   Text,
@@ -9,12 +9,15 @@ import {
   SafeAreaView,
   Platform,
   Animated,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import ScreenNameEnum from '../../routes/screenName.enum';
 import {useLanguage} from '../../language/LanguageContext';
 import languageStrings from '../../language/languageStrings';
+import {getBookings, BookingItem} from '../../api/bookingApi';
 
 const C = {
   purple: '#6E39F7',
@@ -31,74 +34,6 @@ const C = {
 };
 
 // TABS built inside component to use translations
-
-const ALL_BOOKINGS = [
-  {
-    id: 'BK-102938',
-    service: 'AC Repair',
-    emoji: '❄️',
-    address: 'Flat 203, Green Heights, Andheri East',
-    datetime: 'आज, 03:00 PM',
-    amount: 398,
-    status: 'active',
-    step: 'EN_ROUTE',
-    partner: 'Ravi Kumar',
-    partnerRating: '4.8',
-    eta: '8 min',
-  },
-  {
-    id: 'BK-101245',
-    service: 'Home Cleaning',
-    emoji: '🧹',
-    address: '12, MG Road, Sector 5, Nagpur',
-    datetime: 'कल, 11:00 AM',
-    amount: 348,
-    status: 'active',
-    step: 'ASSIGNED',
-    partner: 'Suresh Yadav',
-    partnerRating: '4.6',
-    eta: '25 min',
-  },
-  {
-    id: 'BK-099871',
-    service: 'Plumber',
-    emoji: '🔧',
-    address: 'B-204, IT Park, Hingna',
-    datetime: '24 July, 10:30 AM',
-    amount: 198,
-    status: 'completed',
-    step: 'COMPLETED',
-    partner: 'Ajay Shinde',
-    partnerRating: '4.9',
-    eta: null,
-  },
-  {
-    id: 'BK-098533',
-    service: 'Electrician',
-    emoji: '⚡',
-    address: 'Ram Nagar, Indore',
-    datetime: '22 July, 3:00 PM',
-    amount: 248,
-    status: 'completed',
-    step: 'COMPLETED',
-    partner: 'Mohit Gupta',
-    partnerRating: '4.7',
-    eta: null,
-  },
-  {
-    id: 'BK-097120',
-    service: 'Pest Control',
-    emoji: '🐛',
-    address: 'Sector 7, Noida',
-    datetime: '20 July, 9:00 AM',
-    amount: 648,
-    status: 'cancelled',
-    step: 'CANCELLED',
-    partner: null,
-    partnerRating: null,
-    eta: null,
-  },
-];
 
 // STEP_LABELS built inside component to use translations
 
@@ -145,8 +80,31 @@ type Props = {navigation: any};
 
 export default function MyBookingsScreen({navigation}: Props) {
   const [activeTab, setActiveTab] = useState('active');
+  const [bookings, setBookings] = useState<BookingItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const {lang} = useLanguage();
   const t = languageStrings[lang];
+
+  const fetchBookings = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
+    setError(null);
+    try {
+      const data = await getBookings();
+      setBookings(data);
+    } catch (e: any) {
+      setError(e?.message ?? 'बुकिंग लोड नहीं हो सकी');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    fetchBookings();
+  }, [fetchBookings]);
 
   const TABS = [
     {key: 'active', label: t.activeTab, icon: 'time-outline'},
@@ -163,7 +121,7 @@ export default function MyBookingsScreen({navigation}: Props) {
     CANCELLED: t.stepCancelled,
   };
 
-  const filtered = ALL_BOOKINGS.filter(b => b.status === activeTab);
+  const filtered = bookings.filter(b => b.status === activeTab);
 
   const renderEmpty = () => (
     <View style={s.emptyBox}>
@@ -181,7 +139,7 @@ export default function MyBookingsScreen({navigation}: Props) {
     </View>
   );
 
-  const renderItem = ({item}: {item: (typeof ALL_BOOKINGS)[0]}) => {
+  const renderItem = ({item}: {item: BookingItem}) => {
     const isActive = item.status === 'active';
     const isCancelled = item.status === 'cancelled';
     const statusColor = STATUS_COLOR[item.status];
@@ -315,7 +273,7 @@ export default function MyBookingsScreen({navigation}: Props) {
       {/* Tabs */}
       <View style={s.tabBar}>
         {TABS.map(tab => {
-          const count = ALL_BOOKINGS.filter(b => b.status === tab.key).length;
+          const count = bookings.filter(b => b.status === tab.key).length;
           return (
             <TouchableOpacity
               key={tab.key}
@@ -350,14 +308,39 @@ export default function MyBookingsScreen({navigation}: Props) {
         })}
       </View>
 
-      <FlatList
-        data={filtered}
-        keyExtractor={item => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={s.list}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={renderEmpty}
-      />
+      {loading && !refreshing ? (
+        <View style={s.centeredState}>
+          <ActivityIndicator size="large" color={C.purple} />
+        </View>
+      ) : error ? (
+        <View style={s.centeredState}>
+          <Text style={s.errorEmoji}>⚠️</Text>
+          <Text style={s.errorTitle}>{error}</Text>
+          <TouchableOpacity
+            style={s.retryBtn}
+            onPress={() => fetchBookings()}
+            activeOpacity={0.8}>
+            <Text style={s.retryText}>दोबारा कोशिश करें</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <FlatList
+          data={filtered}
+          keyExtractor={item => item.id}
+          renderItem={renderItem}
+          contentContainerStyle={s.list}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={renderEmpty}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => fetchBookings(true)}
+              colors={[C.purple]}
+              tintColor={C.purple}
+            />
+          }
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -512,4 +495,15 @@ const s = StyleSheet.create({
   emptyEmoji: {fontSize: 52, marginBottom: 16},
   emptyTitle: {fontSize: 18, fontWeight: '800', color: C.text, marginBottom: 6},
   emptySub: {fontSize: 13, color: C.sub, textAlign: 'center'},
+
+  centeredState: {flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 60},
+  errorEmoji: {fontSize: 40, marginBottom: 12},
+  errorTitle: {fontSize: 14, color: C.sub, textAlign: 'center', marginBottom: 16, paddingHorizontal: 24},
+  retryBtn: {
+    backgroundColor: C.purple,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  retryText: {color: '#fff', fontWeight: '700', fontSize: 14},
 });

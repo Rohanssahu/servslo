@@ -4,6 +4,7 @@ const RECENT_KEY = '@servslo_recent_v1';
 const MAX_RECENT = 6;
 
 export type ServiceResult = {
+  id?: string;
   key: string;
   label: string;
   emoji: string;
@@ -15,6 +16,17 @@ export type ServiceResult = {
 };
 
 type CatalogEntry = Omit<ServiceResult, 'matchScore'> & {aliases: string[]};
+
+type ApiService = {
+  id: string;
+  name: string;
+  name_en: string;
+  emoji: string;
+  category: string;
+  base_price: number;
+  rating: number;
+  tags?: string[];
+};
 
 const CATALOG: CatalogEntry[] = [
   {
@@ -226,6 +238,48 @@ const CATALOG: CatalogEntry[] = [
   },
 ];
 
+// Mutable active catalog — starts as hardcoded, replaced by initSearchCatalog()
+let activeCatalog: CatalogEntry[] = CATALOG;
+
+/**
+ * Call once after GET /services loads. Merges API IDs into hardcoded catalog
+ * entries (preserving rich aliases) and appends any API services not covered.
+ */
+export function initSearchCatalog(services: ApiService[]): void {
+  // Augment hardcoded entries with matched API id
+  const merged: CatalogEntry[] = CATALOG.map(entry => {
+    const match = services.find(
+      s =>
+        s.name_en.toLowerCase() === entry.label.toLowerCase() ||
+        s.name.toLowerCase() === entry.label.toLowerCase(),
+    );
+    return match ? {...entry, id: match.id} : entry;
+  });
+
+  // Append API services not covered by any hardcoded entry
+  const coveredIds = new Set(merged.filter(e => e.id).map(e => e.id));
+  const extra: CatalogEntry[] = services
+    .filter(s => !coveredIds.has(s.id))
+    .map(s => ({
+      id: s.id,
+      key: s.category,
+      label: s.name_en,
+      emoji: s.emoji,
+      desc: s.tags?.join(', ') ?? s.category,
+      price: `₹${Math.round(s.base_price / 100)}+`,
+      rating: s.rating?.toFixed(1) ?? '4.5',
+      basePrice: Math.round(s.base_price / 100),
+      aliases: [
+        s.name.toLowerCase(),
+        s.name_en.toLowerCase(),
+        s.category,
+        ...(s.tags ?? []),
+      ],
+    }));
+
+  activeCatalog = [...merged, ...extra];
+}
+
 export const POPULAR_SEARCHES = [
   'AC repair',
   'plumber chahiye',
@@ -241,7 +295,7 @@ export function search(query: string): ServiceResult[] {
   const q = query.toLowerCase().trim();
   if (q.length < 2) return [];
 
-  const scored = CATALOG.map(svc => {
+  const scored = activeCatalog.map(svc => {
     let score = 0;
     const lbl = svc.label.toLowerCase();
 
