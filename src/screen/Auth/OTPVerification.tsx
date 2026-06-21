@@ -277,6 +277,9 @@ const OTPVerification: React.FC<{navigation: any; route: any}> = ({navigation, r
         navigation.navigate(ScreenNameEnum.TabNavigator);
       }
     } catch (err: any) {
+
+      console.log('err',err);
+      
       const code = err?.response?.data?.error;
       const remaining = err?.response?.data?.attempts_remaining;
       if (code === 'INVALID_OTP') {

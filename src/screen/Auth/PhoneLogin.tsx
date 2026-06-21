@@ -125,7 +125,7 @@ const PhoneLogin: React.FC<{navigation: any}> = ({navigation}) => {
   };
 
   const validateAndContinue = async () => {
-    if (phone.length !== 10) {
+    if (phone.length != 10) {
       setError(
         lang === 'hi'
           ? 'कृपया 10 अंकों का सही मोबाइल नंबर दर्ज करें'

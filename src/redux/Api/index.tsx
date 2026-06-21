@@ -8,10 +8,11 @@ export interface ApiRequest {
   token?: string;
 }
 
-export const base_url = 'https://mrbikedoctors.com/api';
-export const image_url = 'https://mrbikedoctors.com/image/';
+export const base_url =
+  'https://servslo-backend.onrender.com/api/v1';
 
-
+export const image_url =
+  'https://servslo-backend.onrender.com';
 export const callMultipleApis = async (requests: ApiRequest[]) => {
   
 

@@ -1,8 +1,9 @@
 import axios, {AxiosInstance, InternalAxiosRequestConfig} from 'axios';
 import {store} from '../redux/Store';
 import {setTokens, logout} from '../redux/feature/authSlice';
+import { base_url } from '../redux/Api';
 
-export const BASE_URL = 'https://mrbikedoctors.com/api/v1';
+export const BASE_URL = base_url;
 
 const client: AxiosInstance = axios.create({baseURL: BASE_URL});
 

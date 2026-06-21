@@ -43,9 +43,15 @@ const UserInfoForm = ({navigation}: {navigation: any}) => {
   const dispatch = useDispatch();
   const existingUser = useSelector((s: any) => s.auth?.userData);
 
-  const [name, setName] = useState(profile && existingUser?.name ? existingUser.name : '');
-  const [gender, setGender] = useState(profile && existingUser?.gender ? existingUser.gender : '');
-  const [photo, setPhoto] = useState<string | null>(profile && existingUser?.photo_url ? existingUser.photo_url : null);
+  const [name, setName] = useState(
+    profile && existingUser?.name ? existingUser.name : '',
+  );
+  const [gender, setGender] = useState(
+    profile && existingUser?.gender ? existingUser.gender : '',
+  );
+  const [photo, setPhoto] = useState<string | null>(
+    profile && existingUser?.photo_url ? existingUser.photo_url : null,
+  );
   const [showModal, setShowModal] = useState(false);
   const [showPhotoSheet, setShowPhotoSheet] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -58,7 +64,10 @@ const UserInfoForm = ({navigation}: {navigation: any}) => {
 
   const openCamera = async () => {
     setShowPhotoSheet(false);
-    const result = await launchCamera({mediaType: 'photo', saveToPhotos: false});
+    const result = await launchCamera({
+      mediaType: 'photo',
+      saveToPhotos: false,
+    });
     if (!result.didCancel && result.assets?.length) {
       setPhoto(result.assets[0].uri ?? null);
     }
@@ -66,7 +75,10 @@ const UserInfoForm = ({navigation}: {navigation: any}) => {
 
   const openGallery = async () => {
     setShowPhotoSheet(false);
-    const result = await launchImageLibrary({mediaType: 'photo', selectionLimit: 1});
+    const result = await launchImageLibrary({
+      mediaType: 'photo',
+      selectionLimit: 1,
+    });
     if (!result.didCancel && result.assets?.length) {
       setPhoto(result.assets[0].uri ?? null);
     }
@@ -90,7 +102,11 @@ const UserInfoForm = ({navigation}: {navigation: any}) => {
       start={{x: 0.1, y: 0}}
       end={{x: 1, y: 1}}
       style={{flex: 1}}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar
+        barStyle="light-content"
+        translucent
+        backgroundColor="transparent"
+      />
 
       {/* Back / Language Toggle */}
       <TouchableOpacity
@@ -99,7 +115,7 @@ const UserInfoForm = ({navigation}: {navigation: any}) => {
           if (profile) {
             navigation.goBack();
           } else {
-            toggleLang()
+            toggleLang();
           }
         }}>
         {profile ? (
@@ -112,14 +128,17 @@ const UserInfoForm = ({navigation}: {navigation: any}) => {
       <TouchableOpacity
         style={styles.speakerIcon}
         onPress={() => ttsSpeak(strings.title)}>
-        <Icon source={icon.speaker} size={24} style={{tintColor: color.purple}} />
+        <Icon
+          source={icon.speaker}
+          size={24}
+          style={{tintColor: color.purple}}
+        />
       </TouchableOpacity>
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
-
         {/* Top heading */}
         <View style={styles.topArea}>
           <Text style={styles.topTitle}>
@@ -133,7 +152,6 @@ const UserInfoForm = ({navigation}: {navigation: any}) => {
         </View>
 
         <View style={styles.card}>
-
           {/* Photo Upload */}
           <Text style={styles.sectionLabel}>
             {language === 'hi' ? 'प्रोफ़ाइल फ़ोटो' : 'Profile Photo'}
@@ -168,7 +186,10 @@ const UserInfoForm = ({navigation}: {navigation: any}) => {
               placeholder={strings.name}
               value={name}
               onChangeText={setName}
-              style={[styles.input, name.trim().length > 0 && styles.inputValid]}
+              style={[
+                styles.input,
+                name.trim().length > 0 && styles.inputValid,
+              ]}
               onFocus={() => ttsSpeak(strings.name)}
               placeholderTextColor="#bbb"
               autoCapitalize="words"
@@ -214,7 +235,10 @@ const UserInfoForm = ({navigation}: {navigation: any}) => {
 
           {/* Submit Button */}
           <TouchableOpacity
-            style={[styles.button, (!isFormValid || loading) && styles.buttonDisabled]}
+            style={[
+              styles.button,
+              (!isFormValid || loading) && styles.buttonDisabled,
+            ]}
             onPress={async () => {
               if (!isFormValid || loading) return;
               setLoading(true);
@@ -225,7 +249,11 @@ const UserInfoForm = ({navigation}: {navigation: any}) => {
                 form.append('language', language);
                 const isLocalPhoto = photo && !photo.startsWith('http');
                 if (isLocalPhoto) {
-                  form.append('photo', {uri: photo, type: 'image/jpeg', name: 'photo.jpg'} as any);
+                  form.append('photo', {
+                    uri: photo,
+                    type: 'image/jpeg',
+                    name: 'photo.jpg',
+                  } as any);
                 }
                 if (profile) {
                   // Edit existing profile
@@ -234,15 +262,31 @@ const UserInfoForm = ({navigation}: {navigation: any}) => {
                   navigation.goBack();
                 } else {
                   // New user registration
-                  const tempToken = (store.getState() as any).auth?.tempToken ?? '';
-                  const res = await completeProfile(form, tempToken);
-                  dispatch(loginSuccess({user: res.user, accessToken: res.access_token, refreshToken: res.refresh_token}));
+                  const tempToken =
+                    (store.getState() as any).auth?.tempToken ?? '';
+                  const res = await completeProfile(
+                    {
+                      name: name.trim(),
+                      gender,
+                      language,
+                    },
+                    tempToken,
+                  );
+                  dispatch(
+                    loginSuccess({
+                      user: res.user,
+                      accessToken: res.access_token,
+                      refreshToken: res.refresh_token,
+                    }),
+                  );
                   navigation.navigate(ScreenNameEnum.TabNavigator);
                 }
               } catch {
                 Alert.alert(
                   language === 'hi' ? 'समस्या हुई' : 'Error',
-                  language === 'hi' ? 'प्रोफाइल सेव नहीं हो सकी। पुनः प्रयास करें।' : 'Could not save profile. Please try again.',
+                  language === 'hi'
+                    ? 'प्रोफाइल सेव नहीं हो सकी। पुनः प्रयास करें।'
+                    : 'Could not save profile. Please try again.',
                 );
               } finally {
                 setLoading(false);
@@ -283,15 +327,21 @@ const UserInfoForm = ({navigation}: {navigation: any}) => {
         transparent
         animationType="slide"
         onRequestClose={() => setShowPhotoSheet(false)}>
-        <Pressable style={styles.sheetOverlay} onPress={() => setShowPhotoSheet(false)}>
+        <Pressable
+          style={styles.sheetOverlay}
+          onPress={() => setShowPhotoSheet(false)}>
           <Pressable style={styles.sheet} onPress={() => {}}>
             <View style={styles.sheetHandle} />
             <Text style={styles.sheetTitle}>
               {language === 'hi' ? 'फ़ोटो चुनें' : 'Choose Photo'}
             </Text>
 
-            <TouchableOpacity style={styles.sheetOption} onPress={openCamera} activeOpacity={0.75}>
-              <View style={[styles.sheetIconCircle, {backgroundColor: '#f0ebff'}]}>
+            <TouchableOpacity
+              style={styles.sheetOption}
+              onPress={openCamera}
+              activeOpacity={0.75}>
+              <View
+                style={[styles.sheetIconCircle, {backgroundColor: '#f0ebff'}]}>
                 <Icon2 name="camera-outline" size={26} color={color.purple} />
               </View>
               <View style={styles.sheetOptionText}>
@@ -305,8 +355,12 @@ const UserInfoForm = ({navigation}: {navigation: any}) => {
               <Icon2 name="chevron-right" size={22} color="#ccc" />
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.sheetOption} onPress={openGallery} activeOpacity={0.75}>
-              <View style={[styles.sheetIconCircle, {backgroundColor: '#fff3e0'}]}>
+            <TouchableOpacity
+              style={styles.sheetOption}
+              onPress={openGallery}
+              activeOpacity={0.75}>
+              <View
+                style={[styles.sheetIconCircle, {backgroundColor: '#fff3e0'}]}>
                 <Icon2 name="image-outline" size={26} color="#f97316" />
               </View>
               <View style={styles.sheetOptionText}>
@@ -314,7 +368,9 @@ const UserInfoForm = ({navigation}: {navigation: any}) => {
                   {language === 'hi' ? 'गैलरी से चुनें' : 'Choose from Gallery'}
                 </Text>
                 <Text style={styles.sheetOptionSub}>
-                  {language === 'hi' ? 'अपनी फ़ोटो लाइब्रेरी' : 'Browse your photos'}
+                  {language === 'hi'
+                    ? 'अपनी फ़ोटो लाइब्रेरी'
+                    : 'Browse your photos'}
                 </Text>
               </View>
               <Icon2 name="chevron-right" size={22} color="#ccc" />

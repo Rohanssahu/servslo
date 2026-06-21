@@ -35,14 +35,15 @@ export interface VerifyOtpResponse {
 export const sendOtp = (payload: SendOtpPayload) =>
   client.post('/auth/send-otp', payload).then(r => r.data);
 
-export const verifyOtp = (payload: VerifyOtpPayload): Promise<VerifyOtpResponse> =>
+export const verifyOtp = (
+  payload: VerifyOtpPayload,
+): Promise<VerifyOtpResponse> =>
   client.post('/auth/verify-otp', payload).then(r => r.data);
 
-export const completeProfile = (form: FormData, tempToken: string) =>
+export const completeProfile = (payload: any, tempToken: string) =>
   axios
-    .post(`${BASE_URL}/auth/complete-profile`, form, {
+    .post(`${BASE_URL}/auth/complete-profile`, payload, {
       headers: {
-        'Content-Type': 'multipart/form-data',
         Authorization: `Bearer ${tempToken}`,
       },
     })
