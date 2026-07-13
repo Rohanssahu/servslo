@@ -9,7 +9,7 @@ import 'react-native-reanimated';
 import 'react-native-get-random-values';
 
 LogBox.ignoreLogs(['Warning: ...']); // Ignore log notification by message
-LogBox.ignoreAllLogs();//Ignore all log notifications
+LogBox.ignoreAllLogs(); //Ignore all log noti
 
 
 
